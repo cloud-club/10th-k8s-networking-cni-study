@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 840 320" font-family="'Inter', 'Segoe UI', system-ui, sans-serif">
+  <defs>
+    <filter id="s"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.12"/></filter>
+  </defs>
+
+  <rect width="840" height="320" fill="#f8fafc" rx="12"/>
+
+  <!-- Title -->
+  <text x="420" y="35" text-anchor="middle" font-size="18" font-weight="700" fill="#0f172a">Ethernet Frame Structure</text>
+
+  <!-- Preamble -->
+  <rect x="25" y="58" width="95" height="58" rx="6" fill="#fef3c7" stroke="#f59e0b" stroke-width="1.5" filter="url(#s)"/>
+  <text x="72" y="83" text-anchor="middle" font-size="11" font-weight="600" fill="#92400e">Preamble</text>
+  <text x="72" y="101" text-anchor="middle" font-size="10" fill="#a16207">8 bytes</text>
+
+  <!-- Dst MAC -->
+  <rect x="130" y="58" width="120" height="58" rx="6" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.5" filter="url(#s)"/>
+  <text x="190" y="83" text-anchor="middle" font-size="11" font-weight="600" fill="#1e40af">Dst MAC</text>
+  <text x="190" y="101" text-anchor="middle" font-size="10" fill="#3b82f6">6 bytes</text>
+
+  <!-- Src MAC -->
+  <rect x="260" y="58" width="120" height="58" rx="6" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.5" filter="url(#s)"/>
+  <text x="320" y="83" text-anchor="middle" font-size="11" font-weight="600" fill="#1e40af">Src MAC</text>
+  <text x="320" y="101" text-anchor="middle" font-size="10" fill="#3b82f6">6 bytes</text>
+
+  <!-- Type -->
+  <rect x="390" y="58" width="85" height="58" rx="6" fill="#e0e7ff" stroke="#6366f1" stroke-width="1.5" filter="url(#s)"/>
+  <text x="432" y="83" text-anchor="middle" font-size="11" font-weight="600" fill="#3730a3">Type</text>
+  <text x="432" y="101" text-anchor="middle" font-size="10" fill="#4f46e5">2 bytes</text>
+
+  <!-- Payload -->
+  <rect x="485" y="58" width="220" height="58" rx="6" fill="#dcfce7" stroke="#22c55e" stroke-width="1.5" filter="url(#s)"/>
+  <text x="595" y="83" text-anchor="middle" font-size="11" font-weight="600" fill="#15803d">Payload (IP Packet)</text>
+  <text x="595" y="101" text-anchor="middle" font-size="10" fill="#16a34a">46 – 1500 bytes</text>
+
+  <!-- FCS -->
+  <rect x="715" y="58" width="100" height="58" rx="6" fill="#fce7f3" stroke="#ec4899" stroke-width="1.5" filter="url(#s)"/>
+  <text x="765" y="83" text-anchor="middle" font-size="11" font-weight="600" fill="#9d174d">FCS</text>
+  <text x="765" y="101" text-anchor="middle" font-size="10" fill="#db2777">4 bytes</text>
+
+  <!-- Layer labels -->
+  <text x="72" y="143" text-anchor="middle" font-size="9" fill="#78716c">Clock Sync</text>
+  <text x="255" y="143" text-anchor="middle" font-size="9" fill="#3b82f6">L2 — MAC Address (HW ID)</text>
+  <text x="432" y="143" text-anchor="middle" font-size="9" fill="#4f46e5">L2 ↔ L3</text>
+  <text x="595" y="143" text-anchor="middle" font-size="9" fill="#16a34a">Upper Layer Data</text>
+  <text x="765" y="143" text-anchor="middle" font-size="9" fill="#db2777">CRC-32</text>
+
+  <!-- Type detail box -->
+  <rect x="40" y="170" width="340" height="130" rx="8" fill="white" stroke="#e2e8f0" stroke-width="1.5" filter="url(#s)"/>
+  <text x="210" y="197" text-anchor="middle" font-size="13" font-weight="600" fill="#0f172a">Type Field — Protocol ID</text>
+  <line x1="60" y1="208" x2="360" y2="208" stroke="#e2e8f0"/>
+  <text x="75" y="232" font-size="12" fill="#4f46e5" font-weight="600">0x0800</text>
+  <text x="165" y="232" font-size="12" fill="#475569">→ IPv4</text>
+  <text x="75" y="256" font-size="12" fill="#4f46e5" font-weight="600">0x86DD</text>
+  <text x="165" y="256" font-size="12" fill="#475569">→ IPv6</text>
+  <text x="75" y="280" font-size="12" fill="#4f46e5" font-weight="600">0x0806</text>
+  <text x="165" y="280" font-size="12" fill="#475569">→ ARP</text>
+
+  <!-- MAC structure box -->
+  <rect x="420" y="170" width="395" height="130" rx="8" fill="white" stroke="#e2e8f0" stroke-width="1.5" filter="url(#s)"/>
+  <text x="617" y="197" text-anchor="middle" font-size="13" font-weight="600" fill="#0f172a">MAC Address Structure (48-bit)</text>
+  <line x1="440" y1="208" x2="795" y2="208" stroke="#e2e8f0"/>
+
+  <rect x="445" y="222" width="165" height="38" rx="4" fill="#dbeafe" stroke="#93c5fd"/>
+  <text x="527" y="246" text-anchor="middle" font-size="11" font-weight="600" fill="#1e40af">OUI (Vendor)</text>
+
+  <rect x="625" y="222" width="165" height="38" rx="4" fill="#e0e7ff" stroke="#a5b4fc"/>
+  <text x="707" y="246" text-anchor="middle" font-size="11" font-weight="600" fill="#3730a3">Unique ID</text>
+
+  <text x="617" y="285" text-anchor="middle" font-size="12" fill="#64748b" font-family="monospace">96:60:2d : e2:2f:03</text>
+</svg>

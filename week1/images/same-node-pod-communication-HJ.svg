@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 340" font-family="'Inter', 'Segoe UI', -apple-system, sans-serif">
+  <defs>
+    <filter id="s">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.12"/>
+    </filter>
+    <marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#2980b9"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="800" height="340" fill="#f8fafc" rx="12"/>
+
+  <!-- Title -->
+  <text x="400" y="32" text-anchor="middle" font-size="18" font-weight="700" fill="#0f172a">Same-Node Pod Communication via veth Pair and Linux Bridge</text>
+
+  <!-- Pod A Namespace Zone -->
+  <rect x="20" y="55" width="185" height="230" rx="10" fill="#e8f4f8" stroke="#2980b9" stroke-width="1.5" stroke-dasharray="6,4" filter="url(#s)"/>
+  <text x="112" y="75" text-anchor="middle" font-size="12" font-weight="600" fill="#2980b9">Pod A Network Namespace</text>
+
+  <!-- Pod A box -->
+  <rect x="40" y="88" width="145" height="80" rx="8" fill="#ffffff" stroke="#2980b9" stroke-width="1.5" filter="url(#s)"/>
+  <text x="112" y="112" text-anchor="middle" font-size="13" font-weight="600" fill="#0f172a">Pod A</text>
+  <rect x="68" y="122" width="88" height="30" rx="6" fill="#e8f4f8" stroke="#2980b9" stroke-width="1"/>
+  <text x="112" y="141" text-anchor="middle" font-size="12" font-weight="600" fill="#2980b9">eth0</text>
+
+  <!-- Pod A IP -->
+  <text x="112" y="185" text-anchor="middle" font-size="11" fill="#64748b">10.42.0.11</text>
+
+  <!-- Host Namespace Zone -->
+  <rect x="230" y="55" width="340" height="230" rx="10" fill="#eaf7ee" stroke="#27ae60" stroke-width="1.5" stroke-dasharray="6,4" filter="url(#s)"/>
+  <text x="400" y="75" text-anchor="middle" font-size="12" font-weight="600" fill="#27ae60">Host Network Namespace</text>
+
+  <!-- vethA label -->
+  <text x="288" y="120" text-anchor="middle" font-size="11" font-weight="600" fill="#f39c12">vethA</text>
+  <!-- vethA dashed line (vertical) -->
+  <line x1="288" y1="152" x2="288" y2="195" stroke="#f39c12" stroke-width="2" stroke-dasharray="5,3"/>
+  <!-- vethA top connector dot -->
+  <circle cx="288" cy="152" r="4" fill="#f39c12"/>
+  <!-- vethA bottom connector dot -->
+  <circle cx="288" cy="195" r="4" fill="#f39c12"/>
+
+  <!-- cni0 Bridge -->
+  <rect x="320" y="185" width="160" height="55" rx="8" fill="#ffffff" stroke="#27ae60" stroke-width="2" filter="url(#s)"/>
+  <text x="400" y="208" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a">cni0 bridge</text>
+  <text x="400" y="228" text-anchor="middle" font-size="11" fill="#27ae60">10.42.0.1</text>
+  <text x="400" y="253" text-anchor="middle" font-size="10" fill="#64748b">L2 Forwarding</text>
+
+  <!-- vethA horizontal line from vethA connector to cni0 -->
+  <line x1="288" y1="212" x2="320" y2="212" stroke="#f39c12" stroke-width="2" stroke-dasharray="5,3"/>
+
+  <!-- vethB label -->
+  <text x="512" y="120" text-anchor="middle" font-size="11" font-weight="600" fill="#8e44ad">vethB</text>
+  <!-- vethB dashed line (vertical) -->
+  <line x1="512" y1="152" x2="512" y2="195" stroke="#8e44ad" stroke-width="2" stroke-dasharray="5,3"/>
+  <!-- vethB top connector dot -->
+  <circle cx="512" cy="152" r="4" fill="#8e44ad"/>
+  <!-- vethB bottom connector dot -->
+  <circle cx="512" cy="195" r="4" fill="#8e44ad"/>
+
+  <!-- vethB horizontal line from cni0 to vethB connector -->
+  <line x1="480" y1="212" x2="512" y2="212" stroke="#8e44ad" stroke-width="2" stroke-dasharray="5,3"/>
+
+  <!-- Pod B Namespace Zone -->
+  <rect x="595" y="55" width="185" height="230" rx="10" fill="#fff3e0" stroke="#f39c12" stroke-width="1.5" stroke-dasharray="6,4" filter="url(#s)"/>
+  <text x="687" y="75" text-anchor="middle" font-size="12" font-weight="600" fill="#f39c12">Pod B Network Namespace</text>
+
+  <!-- Pod B box -->
+  <rect x="615" y="88" width="145" height="80" rx="8" fill="#ffffff" stroke="#f39c12" stroke-width="1.5" filter="url(#s)"/>
+  <text x="687" y="112" text-anchor="middle" font-size="13" font-weight="600" fill="#0f172a">Pod B</text>
+  <rect x="643" y="122" width="88" height="30" rx="6" fill="#fff3e0" stroke="#f39c12" stroke-width="1"/>
+  <text x="687" y="141" text-anchor="middle" font-size="12" font-weight="600" fill="#f39c12">eth0</text>
+
+  <!-- Pod B IP -->
+  <text x="687" y="185" text-anchor="middle" font-size="11" fill="#64748b">10.42.0.12</text>
+
+  <!-- vethB to Pod B eth0 connection line -->
+  <line x1="512" y1="137" x2="615" y2="137" stroke="#8e44ad" stroke-width="2" stroke-dasharray="5,3"/>
+
+  <!-- vethA to Pod A eth0 connection line -->
+  <line x1="185" y1="137" x2="288" y2="137" stroke="#f39c12" stroke-width="2" stroke-dasharray="5,3"/>
+
+  <!-- Packet Flow Arrows (numbered 1-4) -->
+  <!-- Arrow 1: Pod A eth0 → (rightward, below namespace) -->
+  <line x1="155" y1="270" x2="225" y2="270" stroke="#2980b9" stroke-width="2" marker-end="url(#arrow)"/>
+  <rect x="40" y="258" width="108" height="22" rx="4" fill="#2980b9" opacity="0.1"/>
+  <text x="70" y="273" text-anchor="middle" font-size="11" font-weight="600" fill="#2980b9">1  Pod A eth0</text>
+
+  <!-- Arrow 2: → vethA → cni0 -->
+  <line x1="252" y1="270" x2="375" y2="270" stroke="#2980b9" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="308" y="263" text-anchor="middle" font-size="10" font-weight="600" fill="#27ae60">2  vethA → cni0</text>
+
+  <!-- Arrow 3: → cni0 → vethB -->
+  <line x1="430" y1="270" x2="548" y2="270" stroke="#2980b9" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="490" y="263" text-anchor="middle" font-size="10" font-weight="600" fill="#8e44ad">3  cni0 → vethB</text>
+
+  <!-- Arrow 4: → Pod B eth0 -->
+  <line x1="575" y1="270" x2="645" y2="270" stroke="#2980b9" stroke-width="2" marker-end="url(#arrow)"/>
+  <rect x="653" y="258" width="108" height="22" rx="4" fill="#f39c12" opacity="0.1"/>
+  <text x="720" y="273" text-anchor="middle" font-size="11" font-weight="600" fill="#f39c12">4  Pod B eth0</text>
+
+  <!-- Flow baseline line -->
+  <line x1="40" y1="280" x2="760" y2="280" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="2,4"/>
+</svg>

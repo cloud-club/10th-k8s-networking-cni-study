@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 420" font-family="'Inter', 'Segoe UI', system-ui, sans-serif">
+  <defs>
+    <linearGradient id="kernelGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#1e293b"/>
+      <stop offset="100%" style="stop-color:#334155"/>
+    </linearGradient>
+    <linearGradient id="bridgeGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#7c3aed"/>
+      <stop offset="100%" style="stop-color:#6d28d9"/>
+    </linearGradient>
+    <linearGradient id="hwGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#059669"/>
+      <stop offset="100%" style="stop-color:#047857"/>
+    </linearGradient>
+    <filter id="s"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.12"/></filter>
+  </defs>
+
+  <rect width="720" height="420" fill="#f8fafc" rx="12"/>
+
+  <!-- Title -->
+  <text x="360" y="32" text-anchor="middle" font-size="17" font-weight="700" fill="#0f172a">macOS bridge0 — Thunderbolt Bridge</text>
+
+  <!-- Mac A kernel box -->
+  <rect x="110" y="52" width="500" height="170" rx="8" fill="url(#kernelGrad)" filter="url(#s)"/>
+  <text x="360" y="76" text-anchor="middle" font-size="13" font-weight="600" fill="#e2e8f0">Mac A (Kernel)</text>
+
+  <!-- bridge0 -->
+  <rect x="210" y="92" width="300" height="44" rx="6" fill="url(#bridgeGrad)" filter="url(#s)"/>
+  <text x="360" y="113" text-anchor="middle" font-size="14" font-weight="700" fill="white">bridge0</text>
+  <text x="360" y="128" text-anchor="middle" font-size="10" fill="#ddd6fe">Virtual L2 Switch</text>
+
+  <!-- en1, en2, en3 -->
+  <rect x="145" y="160" width="120" height="42" rx="5" fill="#f1f5f9" stroke="#cbd5e1"/>
+  <text x="205" y="178" text-anchor="middle" font-size="13" font-weight="600" fill="#0f172a">en1</text>
+  <text x="205" y="194" text-anchor="middle" font-size="9" fill="#64748b">Thunderbolt port 1</text>
+
+  <rect x="300" y="160" width="120" height="42" rx="5" fill="#f1f5f9" stroke="#cbd5e1"/>
+  <text x="360" y="178" text-anchor="middle" font-size="13" font-weight="600" fill="#0f172a">en2</text>
+  <text x="360" y="194" text-anchor="middle" font-size="9" fill="#64748b">Thunderbolt port 2</text>
+
+  <rect x="455" y="160" width="120" height="42" rx="5" fill="#f1f5f9" stroke="#cbd5e1"/>
+  <text x="515" y="178" text-anchor="middle" font-size="13" font-weight="600" fill="#0f172a">en3</text>
+  <text x="515" y="194" text-anchor="middle" font-size="9" fill="#64748b">Thunderbolt port 3</text>
+
+  <!-- bridge0 → en lines -->
+  <line x1="285" y1="136" x2="205" y2="160" stroke="#a78bfa" stroke-width="2"/>
+  <line x1="360" y1="136" x2="360" y2="160" stroke="#a78bfa" stroke-width="2"/>
+  <line x1="435" y1="136" x2="515" y2="160" stroke="#a78bfa" stroke-width="2"/>
+
+  <!-- Thunderbolt cables (dashed) -->
+  <line x1="205" y1="222" x2="205" y2="270" stroke="#94a3b8" stroke-width="2" stroke-dasharray="6,4"/>
+  <line x1="360" y1="222" x2="360" y2="270" stroke="#94a3b8" stroke-width="2" stroke-dasharray="6,4"/>
+  <line x1="515" y1="222" x2="515" y2="270" stroke="#94a3b8" stroke-width="2" stroke-dasharray="6,4"/>
+
+  <text x="205" y="250" text-anchor="middle" font-size="9" fill="#94a3b8">cable</text>
+  <text x="360" y="250" text-anchor="middle" font-size="9" fill="#94a3b8">cable</text>
+  <text x="515" y="250" text-anchor="middle" font-size="9" fill="#94a3b8">cable</text>
+
+  <!-- External Macs -->
+  <rect x="140" y="274" width="130" height="50" rx="8" fill="url(#hwGrad)" filter="url(#s)"/>
+  <text x="205" y="296" text-anchor="middle" font-size="13" font-weight="700" fill="white">Mac B</text>
+  <text x="205" y="314" text-anchor="middle" font-size="10" fill="#a7f3d0">192.168.10.2</text>
+
+  <rect x="295" y="274" width="130" height="50" rx="8" fill="url(#hwGrad)" filter="url(#s)"/>
+  <text x="360" y="296" text-anchor="middle" font-size="13" font-weight="700" fill="white">Mac C</text>
+  <text x="360" y="314" text-anchor="middle" font-size="10" fill="#a7f3d0">192.168.10.3</text>
+
+  <rect x="450" y="274" width="130" height="50" rx="8" fill="url(#hwGrad)" filter="url(#s)"/>
+  <text x="515" y="296" text-anchor="middle" font-size="13" font-weight="700" fill="white">Mac D</text>
+  <text x="515" y="314" text-anchor="middle" font-size="10" fill="#a7f3d0">192.168.10.4</text>
+
+  <!-- L2 direct traffic: Mac B ↔ Mac C through bridge -->
+  <path d="M205,274 C205,248 205,240 260,240 L460,240 C515,240 515,248 515,274" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-dasharray="6,3"/>
+  <text x="360" y="236" text-anchor="middle" font-size="10" font-weight="700" fill="#d97706">L2 Frame Forwarding (MAC-based, no routing)</text>
+
+  <!-- Insight box -->
+  <rect x="60" y="348" width="600" height="50" rx="8" fill="#fef3c7" stroke="#f59e0b" stroke-width="1.5"/>
+  <text x="360" y="370" text-anchor="middle" font-size="12" font-weight="600" fill="#92400e">bridge0 makes en1, en2, en3 behave as one Ethernet switch</text>
+  <text x="360" y="388" text-anchor="middle" font-size="11" fill="#a16207">Without bridge0: en1 and en2 are separate segments — L3 routing needed</text>
+
+</svg>

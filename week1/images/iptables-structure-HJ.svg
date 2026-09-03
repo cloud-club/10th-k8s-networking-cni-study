@@ -1,0 +1,111 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 850 520" font-family="'Inter', 'Segoe UI', system-ui, sans-serif">
+  <defs>
+    <filter id="s"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.12"/></filter>
+  </defs>
+
+  <rect width="850" height="520" fill="#f8fafc" rx="12"/>
+  <text x="425" y="32" text-anchor="middle" font-size="18" font-weight="700" fill="#0f172a">iptables Hierarchy: Table → Chain → Rule</text>
+
+  <!-- Tables -->
+  <text x="40" y="64" font-size="14" font-weight="700" fill="#0f172a">Tables (What kind of operation?)</text>
+
+  <rect x="40" y="74" width="170" height="45" rx="8" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.5" filter="url(#s)"/>
+  <text x="125" y="94" text-anchor="middle" font-size="13" font-weight="600" fill="#1e40af">filter</text>
+  <text x="125" y="111" text-anchor="middle" font-size="9" fill="#3b82f6">Allow / Block</text>
+
+  <rect x="230" y="74" width="170" height="45" rx="8" fill="#dcfce7" stroke="#22c55e" stroke-width="1.5" filter="url(#s)"/>
+  <text x="315" y="94" text-anchor="middle" font-size="13" font-weight="600" fill="#15803d">nat</text>
+  <text x="315" y="111" text-anchor="middle" font-size="9" fill="#16a34a">Address Translation</text>
+
+  <rect x="420" y="74" width="170" height="45" rx="8" fill="#fef3c7" stroke="#f59e0b" stroke-width="1.5" filter="url(#s)"/>
+  <text x="505" y="94" text-anchor="middle" font-size="13" font-weight="600" fill="#92400e">mangle</text>
+  <text x="505" y="111" text-anchor="middle" font-size="9" fill="#a16207">Header Modification</text>
+
+  <rect x="610" y="74" width="200" height="45" rx="8" fill="#fce7f3" stroke="#ec4899" stroke-width="1.5" filter="url(#s)"/>
+  <text x="710" y="94" text-anchor="middle" font-size="13" font-weight="600" fill="#9d174d">raw</text>
+  <text x="710" y="111" text-anchor="middle" font-size="9" fill="#db2777">Skip conntrack</text>
+
+  <!-- Table-Chain mapping -->
+  <text x="40" y="152" font-size="14" font-weight="700" fill="#0f172a">Table → Chain Mapping</text>
+
+  <rect x="40" y="162" width="770" height="140" rx="8" fill="white" stroke="#e2e8f0" filter="url(#s)"/>
+
+  <!-- Header -->
+  <rect x="40" y="162" width="130" height="28" fill="#f1f5f9"/>
+  <text x="105" y="181" text-anchor="middle" font-size="10" font-weight="600" fill="#475569">Table</text>
+  <rect x="170" y="162" width="125" height="28" fill="#f1f5f9"/>
+  <text x="232" y="181" text-anchor="middle" font-size="10" font-weight="600" fill="#475569">PREROUTING</text>
+  <rect x="295" y="162" width="110" height="28" fill="#f1f5f9"/>
+  <text x="350" y="181" text-anchor="middle" font-size="10" font-weight="600" fill="#475569">INPUT</text>
+  <rect x="405" y="162" width="120" height="28" fill="#f1f5f9"/>
+  <text x="465" y="181" text-anchor="middle" font-size="10" font-weight="600" fill="#475569">FORWARD</text>
+  <rect x="525" y="162" width="110" height="28" fill="#f1f5f9"/>
+  <text x="580" y="181" text-anchor="middle" font-size="10" font-weight="600" fill="#475569">OUTPUT</text>
+  <rect x="635" y="162" width="175" height="28" fill="#f1f5f9"/>
+  <text x="722" y="181" text-anchor="middle" font-size="10" font-weight="600" fill="#475569">POSTROUTING</text>
+
+  <!-- raw -->
+  <text x="105" y="212" text-anchor="middle" font-size="11" font-weight="600" fill="#9d174d">raw</text>
+  <text x="232" y="212" text-anchor="middle" font-size="15" fill="#22c55e">✓</text>
+  <text x="350" y="212" text-anchor="middle" font-size="11" fill="#e2e8f0">—</text>
+  <text x="465" y="212" text-anchor="middle" font-size="11" fill="#e2e8f0">—</text>
+  <text x="580" y="212" text-anchor="middle" font-size="15" fill="#22c55e">✓</text>
+  <text x="722" y="212" text-anchor="middle" font-size="11" fill="#e2e8f0">—</text>
+  <!-- mangle -->
+  <text x="105" y="237" text-anchor="middle" font-size="11" font-weight="600" fill="#92400e">mangle</text>
+  <text x="232" y="237" text-anchor="middle" font-size="15" fill="#22c55e">✓</text>
+  <text x="350" y="237" text-anchor="middle" font-size="15" fill="#22c55e">✓</text>
+  <text x="465" y="237" text-anchor="middle" font-size="15" fill="#22c55e">✓</text>
+  <text x="580" y="237" text-anchor="middle" font-size="15" fill="#22c55e">✓</text>
+  <text x="722" y="237" text-anchor="middle" font-size="15" fill="#22c55e">✓</text>
+  <!-- nat -->
+  <text x="105" y="262" text-anchor="middle" font-size="11" font-weight="600" fill="#15803d">nat</text>
+  <text x="232" y="262" text-anchor="middle" font-size="15" fill="#22c55e">✓</text>
+  <text x="350" y="262" text-anchor="middle" font-size="15" fill="#22c55e">✓</text>
+  <text x="465" y="262" text-anchor="middle" font-size="11" fill="#e2e8f0">—</text>
+  <text x="580" y="262" text-anchor="middle" font-size="15" fill="#22c55e">✓</text>
+  <text x="722" y="262" text-anchor="middle" font-size="15" fill="#22c55e">✓</text>
+  <!-- filter -->
+  <text x="105" y="287" text-anchor="middle" font-size="11" font-weight="600" fill="#1e40af">filter</text>
+  <text x="232" y="287" text-anchor="middle" font-size="11" fill="#e2e8f0">—</text>
+  <text x="350" y="287" text-anchor="middle" font-size="15" fill="#22c55e">✓</text>
+  <text x="465" y="287" text-anchor="middle" font-size="15" fill="#22c55e">✓</text>
+  <text x="580" y="287" text-anchor="middle" font-size="15" fill="#22c55e">✓</text>
+  <text x="722" y="287" text-anchor="middle" font-size="11" fill="#e2e8f0">—</text>
+
+  <!-- Order note -->
+  <rect x="40" y="308" width="770" height="30" rx="6" fill="#fef3c7" stroke="#f59e0b"/>
+  <text x="425" y="328" text-anchor="middle" font-size="11" fill="#92400e">Execution order: raw → mangle → nat → filter (fixed kernel-defined order)</text>
+
+  <!-- Rule example -->
+  <text x="40" y="368" font-size="14" font-weight="700" fill="#0f172a">Rule Structure Example</text>
+
+  <rect x="40" y="378" width="770" height="42" rx="8" fill="#1e293b" filter="url(#s)"/>
+  <text x="425" y="404" text-anchor="middle" font-size="13" fill="#e2e8f0" font-family="'SF Mono', 'Fira Code', monospace">iptables -A INPUT -p tcp -s 10.0.0.0/8 --dport 22 -j ACCEPT</text>
+
+  <!-- Breakdown -->
+  <rect x="40" y="430" width="770" height="72" rx="8" fill="white" stroke="#e2e8f0" filter="url(#s)"/>
+
+  <rect x="55" y="442" width="85" height="25" rx="4" fill="#dbeafe"/>
+  <text x="97" y="459" text-anchor="middle" font-size="10" font-weight="600" fill="#1e40af">-A INPUT</text>
+  <text x="97" y="490" text-anchor="middle" font-size="9" fill="#64748b">Chain</text>
+
+  <rect x="155" y="442" width="75" height="25" rx="4" fill="#dcfce7"/>
+  <text x="192" y="459" text-anchor="middle" font-size="10" font-weight="600" fill="#15803d">-p tcp</text>
+  <text x="192" y="490" text-anchor="middle" font-size="9" fill="#64748b">Protocol</text>
+
+  <rect x="245" y="442" width="140" height="25" rx="4" fill="#dcfce7"/>
+  <text x="315" y="459" text-anchor="middle" font-size="10" font-weight="600" fill="#15803d">-s 10.0.0.0/8</text>
+  <text x="315" y="490" text-anchor="middle" font-size="9" fill="#64748b">Source IP</text>
+
+  <rect x="400" y="442" width="110" height="25" rx="4" fill="#dcfce7"/>
+  <text x="455" y="459" text-anchor="middle" font-size="10" font-weight="600" fill="#15803d">--dport 22</text>
+  <text x="455" y="490" text-anchor="middle" font-size="9" fill="#64748b">Dest Port</text>
+
+  <rect x="525" y="442" width="110" height="25" rx="4" fill="#fef3c7" stroke="#f59e0b"/>
+  <text x="580" y="459" text-anchor="middle" font-size="10" font-weight="700" fill="#92400e">-j ACCEPT</text>
+  <text x="580" y="490" text-anchor="middle" font-size="9" fill="#64748b">Target (Action)</text>
+
+  <text x="680" y="459" font-size="10" fill="#64748b">Match Conditions</text>
+  <line x1="155" y1="468" x2="510" y2="468" stroke="#22c55e" stroke-width="1" stroke-dasharray="3,2"/>
+</svg>
