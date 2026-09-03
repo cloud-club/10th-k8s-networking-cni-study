@@ -131,9 +131,13 @@ Linux 공식 문서에서도 veth의 대표적인 사용 사례로 서로 다른
 => 이 구조 덕분에
 
 일반적인 container networking에서는 veth pair의 한쪽을 **Pod Network Namespace에 배치하고, 다른 한쪽을 Host Network Namespace에 배치**할 수 있다.
+
 => 여기서 중요한 점은 Pod의 eth0 자체가 Host의 eth0와 연결되는 것이 아니라, Pod namespace의 interface와 Host namespace의 interface가 veth pair를 통해 연결된다는 것... 
+
 => 그러면 veth pair 같은 방식 없으면 연결 못하나?
+
 ==>> 유일한 방법은 아니긴 한데, 독립되어있는 net ns를 연결하려면 이런 방식이 필요한거임.
+
 ===>>> 그러면 왜 veth를 주로 쓰나? 다른 연결 방법은 뭐가 있나?
 
 | 방법              | 핵심 역할                                  | 일반적인 Pod networking에서 |
@@ -151,5 +155,41 @@ macvlan과 SR-IOV는 더 깊이 파보고 싶으니 추후에...
 Ref for veth pair : https://medium.com/@amazingandyyy/introduction-to-network-namespaces-and-virtual-ethernet-veth-devices-304e0c02d084
 
 
+### netns & veth pair hands-on
 
+![alt text](images/hands-on1-DY.png) 
+```
+Docker Container
+      │
+      ▼
+Network Namespace
+      │
+     eth0
+```
+환경 세팅
 
+- ns 만들기 
+![alt text](images/hands-on2-DY.png) 
+```
+Container
+│
+├── root Network Namespace
+│      └── eth0
+│
+└── ns1
+       └── 아직 interface 없음
+```
+
+- veth pair 만들고, ns1으로 이동해보기
+![alt text](images/hands-on3-DY.png)
+
+```
+Root NS                    ns1
+
+veth-host ◀──────────────▶ veth-ns
+             veth pair
+```
+
+이후 할 것 
+ip주소 설정하고... ping 해보고 packet이 실제로 veth를 지나가는지 tcpdump로 ICMP packet 떠보기
+++ 일부러 veth 없애보기.
