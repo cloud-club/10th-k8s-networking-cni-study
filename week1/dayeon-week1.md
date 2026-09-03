@@ -124,7 +124,7 @@ Pod Network Namespace
 
 특징 : 각 끝을 서로 다른 Network Namespace에 배치할 수 있다는 것
 Linux 공식 문서에서도 veth의 대표적인 사용 사례로 서로 다른 network namespace 간 통신을 제시함
-![alt text](image.png)
+![alt text](images/veth-pair-img-DY.png)
 
 각 namespace는 원래 서로 독립된 network stack을 가지고 있지만, veth pair를 연결함으로써 두 namespace 사이에 network path가 생긴다.
 
