@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Week 1. Kubernetes & Linux Networking Overview - Byun gimok</title>
+  <style>
+    :root {
+      --bg: #f5f6f7;
+      --paper: #ffffff;
+      --text: #20252b;
+      --muted: #65717c;
+      --line: #d8dee4;
+      --soft: #f0f4f7;
+      --blue: #245d7c;
+      --green: #2d6a4f;
+      --orange: #9a5a13;
+      --code-bg: #17212a;
+      --code-text: #edf2f5;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #10161b;
+        --paper: #172027;
+        --text: #edf1f4;
+        --muted: #aeb9c1;
+        --line: #34434e;
+        --soft: #202d35;
+        --blue: #79b7d7;
+        --green: #86c6a4;
+        --orange: #e3aa62;
+        --code-bg: #0b1115;
+        --code-text: #edf2f5;
+      }
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Pretendard", "Noto Sans KR", "Malgun Gothic", system-ui, sans-serif;
+      line-height: 1.75;
+      word-break: keep-all;
+    }
+    a { color: var(--blue); text-underline-offset: 3px; }
+    .wrap { width: min(1000px, calc(100% - 32px)); margin: 0 auto; }
+    header { padding: 64px 0 34px; border-bottom: 1px solid var(--line); background: var(--paper); }
+    .week { margin: 0 0 8px; color: var(--blue); font-size: .9rem; font-weight: 700; }
+    h1 { margin: 0; font-size: clamp(2rem, 5vw, 3.5rem); line-height: 1.15; letter-spacing: -.04em; }
+    .intro { max-width: 760px; margin: 20px 0 0; color: var(--muted); font-size: 1.05rem; }
+    .author { margin-top: 22px; font-size: .92rem; color: var(--muted); }
+    nav { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--paper) 94%, transparent); border-bottom: 1px solid var(--line); backdrop-filter: blur(10px); }
+    nav .wrap { display: flex; gap: 6px; overflow-x: auto; padding-top: 10px; padding-bottom: 10px; }
+    nav a { flex: 0 0 auto; padding: 7px 10px; border-radius: 6px; color: var(--text); font-size: .86rem; text-decoration: none; }
+    nav a:hover { background: var(--soft); }
+    main { padding: 34px 0 80px; }
+    section { margin-bottom: 22px; padding: clamp(24px, 5vw, 48px); border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
+    h2 { margin: 0 0 24px; color: var(--blue); font-size: clamp(1.5rem, 3vw, 2rem); line-height: 1.3; letter-spacing: -.025em; }
+    h3 { margin: 30px 0 10px; font-size: 1.15rem; }
+    p { margin: 10px 0; }
+    ul, ol { padding-left: 1.4rem; }
+    li { margin: 7px 0; }
+    .note { margin: 20px 0; padding: 15px 18px; border-left: 4px solid var(--blue); background: var(--soft); }
+    .question { margin: 18px 0 0; padding: 16px 18px; border: 1px solid var(--line); border-radius: 8px; background: var(--soft); }
+    .question p { margin: 5px 0; }
+    .question strong { color: var(--orange); }
+    table { width: 100%; margin: 16px 0; border-collapse: collapse; font-size: .94rem; }
+    th, td { padding: 11px 12px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { background: var(--soft); color: var(--blue); }
+    code { font-family: "Cascadia Code", Consolas, monospace; font-size: .9em; }
+    pre { overflow-x: auto; margin: 18px 0; padding: 18px; border-radius: 8px; background: var(--code-bg); color: var(--code-text); line-height: 1.55; }
+    .flow { overflow-x: auto; margin: 20px 0; padding: 18px; border: 1px solid var(--line); border-radius: 10px; background: #f8fafb; }
+    .flow svg { display: block; width: 100%; min-width: 820px; height: auto; }
+    .refs { margin-top: 28px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: .88rem; }
+    .refs p { margin: 5px 0; }
+    footer { padding: 30px 0 50px; color: var(--muted); text-align: center; font-size: .86rem; }
+    @media (max-width: 600px) {
+      .wrap { width: min(100% - 18px, 1000px); }
+      header { padding: 38px 0 25px; }
+      section { padding: 24px 18px; }
+      table { font-size: .84rem; }
+      th, td { padding: 9px 8px; }
+    }
+    @media print {
+      :root { --bg: white; --paper: white; --text: #111; --muted: #444; --line: #bbb; --soft: #f2f4f5; --blue: #245d7c; }
+      body { background: white; font-size: 10.5pt; }
+      .wrap { width: 100%; }
+      nav { display: none; }
+      section { break-inside: avoid; }
+      a { color: inherit; text-decoration: none; }
+      .flow { overflow: visible; }
+      .flow svg { min-width: 0; }
+      * { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <p class="week">10th Kubernetes Networking CNI Study · Week 1</p>
+      <h1>Kubernetes &amp; Linux Networking Overview</h1>
+      <p class="intro">이번 주에는 Kubernetes 네트워크를 보기 전에 필요한 기본 내용을 정리한다. 범위는 아래 다섯 가지다. 각 항목이 Pod 네트워크에서 어떻게 쓰이는지까지 연결해 본다.</p>
+      <p class="author">Byun gimok</p>
+    </div>
+  </header>
+
+  <nav aria-label="학습 포인트">
+    <div class="wrap">
+      <a href="#components">1. Kubernetes 컴포넌트</a>
+      <a href="#namespace">2. Namespace / veth / bridge</a>
+      <a href="#tcpip">3. TCP/IP Stack</a>
+      <a href="#routing">4. Routing / ARP</a>
+      <a href="#netfilter">5. Netfilter / iptables</a>
+    </div>
+  </nav>
+
+  <main class="wrap">
+    <section id="components">
+      <h2>1. Kubernetes 컴포넌트 Overview</h2>
+      <p>Kubernetes 클러스터는 Control Plane과 Worker Node로 나뉜다. Control Plane은 클러스터의 상태를 관리하고, Worker Node는 실제 Pod를 실행한다.</p>
+
+      <table>
+        <thead><tr><th>구분</th><th>컴포넌트</th><th>하는 일</th></tr></thead>
+        <tbody>
+          <tr><td>Control Plane</td><td><code>kube-apiserver</code></td><td>Kubernetes API를 제공한다. 다른 컴포넌트는 API Server를 통해 클러스터 상태를 조회하거나 변경한다.</td></tr>
+          <tr><td>Control Plane</td><td><code>etcd</code></td><td>클러스터 상태 데이터를 저장한다.</td></tr>
+          <tr><td>Control Plane</td><td><code>kube-scheduler</code></td><td>새로 생성된 Pod를 어느 Node에서 실행할지 정한다.</td></tr>
+          <tr><td>Control Plane</td><td><code>kube-controller-manager</code></td><td>현재 상태가 선언한 상태와 같아지도록 Controller를 실행한다.</td></tr>
+          <tr><td>Worker Node</td><td><code>kubelet</code></td><td>Node에서 Pod와 컨테이너가 실행되도록 관리한다.</td></tr>
+          <tr><td>Worker Node</td><td>Container Runtime</td><td>컨테이너를 생성하고 실행한다.</td></tr>
+          <tr><td>Worker Node</td><td><code>kube-proxy</code></td><td>Service 트래픽을 Backend Pod로 전달하기 위한 네트워크 규칙을 관리한다.</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Pod가 만들어질 때</h3>
+      <ol>
+        <li>사용자가 Pod 생성을 요청하면 API Server가 요청을 받는다.</li>
+        <li>Scheduler가 Pod를 실행할 Node를 정한다.</li>
+        <li>선택된 Node의 kubelet이 Container Runtime에 Pod 실행을 요청한다.</li>
+        <li>Pod Sandbox와 Network Namespace가 준비되고, 네트워크 플러그인이 Interface와 IP, Route를 설정한다.</li>
+        <li>컨테이너가 실행된다.</li>
+      </ol>
+      <p class="note">Week 1에서는 전체 순서만 본다. kubelet, CRI, CNI가 실제로 호출되는 과정은 Week 2에서 다룬다.</p>
+
+      <div class="refs">
+        <p>참고: <a href="https://kubernetes.io/docs/concepts/overview/components/">Kubernetes Components</a></p>
+        <p>참고: <a href="https://kubernetes.io/docs/concepts/services-networking/">Kubernetes Network Model</a></p>
+      </div>
+    </section>
+
+    <section id="namespace">
+      <h2>2. Linux Network Namespace / veth / bridge</h2>
+
+      <h3>Network Namespace</h3>
+      <p>Network Namespace는 Linux 네트워크 환경을 나누는 기능이다. Namespace마다 Network Interface, IP 주소, Routing Table, Neighbor Table, 방화벽 규칙, Port 공간을 따로 가질 수 있다.</p>
+      <p>일반적인 Kubernetes Pod에서는 같은 Pod 안의 컨테이너들이 하나의 Network Namespace를 공유한다. 그래서 같은 Pod의 컨테이너는 같은 IP를 사용하고 <code>localhost</code>로 통신할 수 있다. 반대로 다른 Pod의 <code>localhost</code>에는 접근할 수 없다.</p>
+
+      <h3>veth pair</h3>
+      <p>veth는 항상 두 개가 한 쌍으로 만들어진다. 한쪽으로 보낸 Frame은 반대쪽에서 들어온다. Pod 네트워크에서는 한쪽을 Pod의 Network Namespace에 넣고, 다른 쪽을 Host Network Namespace에 두는 방식이 자주 사용된다.</p>
+
+      <pre><code>Pod Network Namespace          Host Network Namespace
+
+eth0  &lt;------ veth pair ------&gt;  host-side veth</code></pre>
+
+      <h3>Linux Bridge</h3>
+      <p>Linux Bridge는 여러 Interface를 연결하는 L2 장치다. 일반 스위치처럼 MAC Address를 학습하고, 목적지 MAC Address를 보고 Frame을 내보낼 Port를 선택한다.</p>
+      <p>Bridge가 관리하는 FDB는 대략 다음 정보를 가진다.</p>
+      <pre><code>MAC Address (+ VLAN) → Bridge Port</code></pre>
+
+      <div class="flow" role="img" aria-label="두 Pod가 veth와 Linux Bridge로 연결된 구조">
+        <svg viewBox="0 0 940 300" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#245d7c"/></marker>
+          </defs>
+          <rect x="18" y="20" width="904" height="260" rx="18" fill="#eef3f6" stroke="#aebbc4"/>
+          <text x="42" y="50" fill="#253746" font-size="16" font-weight="700">Worker Node</text>
+          <rect x="42" y="75" width="220" height="150" rx="14" fill="#fff" stroke="#245d7c" stroke-width="2"/>
+          <text x="152" y="108" text-anchor="middle" fill="#253746" font-size="17" font-weight="700">Pod A NetNS</text>
+          <rect x="90" y="140" width="125" height="48" rx="8" fill="#e3f0f6" stroke="#245d7c"/>
+          <text x="152" y="169" text-anchor="middle" fill="#253746" font-size="14">eth0</text>
+          <rect x="323" y="140" width="120" height="48" rx="8" fill="#fff1df" stroke="#9a5a13"/>
+          <text x="383" y="169" text-anchor="middle" fill="#75420d" font-size="13">host veth A</text>
+          <rect x="487" y="115" width="135" height="98" rx="12" fill="#def0e6" stroke="#2d6a4f" stroke-width="2"/>
+          <text x="554" y="154" text-anchor="middle" fill="#24533d" font-size="16" font-weight="700">Linux Bridge</text>
+          <text x="554" y="180" text-anchor="middle" fill="#52616b" font-size="12">MAC → Port</text>
+          <rect x="665" y="140" width="120" height="48" rx="8" fill="#fff1df" stroke="#9a5a13"/>
+          <text x="725" y="169" text-anchor="middle" fill="#75420d" font-size="13">host veth B</text>
+          <rect x="827" y="75" width="72" height="150" rx="14" fill="#fff" stroke="#245d7c" stroke-width="2"/>
+          <text x="863" y="108" text-anchor="middle" fill="#253746" font-size="15" font-weight="700">Pod B</text>
+          <rect x="841" y="140" width="44" height="48" rx="8" fill="#e3f0f6" stroke="#245d7c"/>
+          <text x="863" y="169" text-anchor="middle" fill="#253746" font-size="12">eth0</text>
+          <path d="M215 164 H323" stroke="#245d7c" stroke-width="3" marker-end="url(#arr)"/>
+          <path d="M443 164 H487" stroke="#245d7c" stroke-width="3" marker-end="url(#arr)"/>
+          <path d="M622 164 H665" stroke="#245d7c" stroke-width="3" marker-end="url(#arr)"/>
+          <path d="M785 164 H841" stroke="#245d7c" stroke-width="3" marker-end="url(#arr)"/>
+          <text x="269" y="148" text-anchor="middle" fill="#245d7c" font-size="11">veth pair</text>
+          <text x="813" y="148" text-anchor="middle" fill="#245d7c" font-size="11">veth pair</text>
+        </svg>
+      </div>
+
+      <div class="question">
+        <p><strong>질문 1.</strong> 같은 Pod의 두 컨테이너가 모두 <code>0.0.0.0:8080</code>을 사용하려고 하면 어떻게 될까?</p>
+        <p>두 컨테이너가 같은 Network Namespace와 Port 공간을 공유하므로 Port 충돌이 발생한다.</p>
+      </div>
+
+      <p class="note">veth와 Linux Bridge는 Pod 네트워크를 설명하기 좋은 예시지만 모든 CNI가 이 구조를 쓰는 것은 아니다. 이번 주에는 Linux 기능을 이해하기 위한 기본 모델로만 사용한다.</p>
+
+      <div class="refs">
+        <p>참고: <a href="https://kubernetes.io/docs/concepts/workloads/pods/">Kubernetes Pods</a></p>
+        <p>참고: <a href="https://man7.org/linux/man-pages/man7/network_namespaces.7.html">network_namespaces(7)</a></p>
+        <p>참고: <a href="https://man7.org/linux/man-pages/man4/veth.4.html">veth(4)</a></p>
+        <p>참고: <a href="https://docs.kernel.org/networking/bridge.html">Linux Ethernet Bridging</a></p>
+      </div>
+    </section>
+
+    <section id="tcpip">
+      <h2>3. TCP/IP Stack</h2>
+      <p>애플리케이션이 만든 데이터는 TCP/IP Stack을 거치면서 네트워크로 전송할 수 있는 형태가 된다. 수신 측에서는 반대 순서로 Header를 확인하고 원래 데이터를 애플리케이션에 전달한다.</p>
+
+      <table>
+        <thead><tr><th>계층</th><th>예</th><th>이번 주에 볼 내용</th></tr></thead>
+        <tbody>
+          <tr><td>Application</td><td>HTTP, DNS</td><td>애플리케이션이 전송할 데이터를 만든다.</td></tr>
+          <tr><td>Transport</td><td>TCP, UDP</td><td>Port 번호를 사용해 Process를 구분한다.</td></tr>
+          <tr><td>Internet</td><td>IPv4, IPv6</td><td>Source/Destination IP를 사용하고 Route를 조회한다.</td></tr>
+          <tr><td>Link</td><td>Ethernet</td><td>같은 Link에서 MAC Address를 사용해 Frame을 전달한다.</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Pod A에서 Pod B로 보낼 때</h3>
+      <pre><code>Application data
+  → TCP/UDP segment
+  → IP packet
+  → Ethernet frame
+  → Pod eth0
+  → veth
+  → Linux Bridge
+  → veth
+  → Pod B eth0
+  → IP
+  → TCP/UDP
+  → Application</code></pre>
+
+      <p>IP Packet 안의 목적지 IP와 Ethernet Frame의 목적지 MAC은 같은 역할이 아니다. IP는 최종 통신 대상을 나타내고, MAC은 현재 Link에서 Frame을 다음 장치로 전달할 때 사용한다.</p>
+
+      <div class="question">
+        <p><strong>질문 2.</strong> Packet이 Router를 통과해도 목적지 IP와 목적지 MAC이 계속 같을까?</p>
+        <p>목적지 IP는 일반적으로 최종 목적지를 유지한다. Ethernet Header는 Link가 바뀔 때마다 새로 만들어지므로 목적지 MAC도 next hop에 맞게 달라진다.</p>
+      </div>
+
+      <div class="refs">
+        <p>참고: <a href="https://www.rfc-editor.org/rfc/rfc1122">RFC 1122 - Requirements for Internet Hosts</a></p>
+      </div>
+    </section>
+
+    <section id="routing">
+      <h2>4. Routing / ARP</h2>
+
+      <h3>Routing</h3>
+      <p>Routing은 목적지 IP를 보고 Packet을 어느 Interface로 내보낼지, next hop은 누구인지 정하는 과정이다. Linux는 Network Namespace마다 Routing Table을 가질 수 있다.</p>
+      <pre><code># 현재 Routing Table 확인
+ip route
+
+# 특정 목적지로 갈 때 선택되는 경로 확인
+ip route get 10.244.0.3</code></pre>
+
+      <h3>ARP</h3>
+      <p>ARP는 같은 Link에서 IPv4 주소에 해당하는 MAC Address를 찾는다. Neighbor Cache에 정보가 없으면 ARP Request를 Broadcast하고, 해당 IP를 가진 장치가 자신의 MAC Address로 응답한다.</p>
+      <pre><code>ARP / Neighbor Table
+IP Address → MAC Address
+
+Bridge FDB
+MAC Address (+ VLAN) → Bridge Port</code></pre>
+
+      <h3>같은 Subnet과 다른 Subnet</h3>
+      <table>
+        <thead><tr><th>목적지</th><th>Route 판단</th><th>ARP로 찾는 MAC</th></tr></thead>
+        <tbody>
+          <tr><td>같은 Subnet</td><td>직접 연결된 Network</td><td>목적지 장치의 MAC</td></tr>
+          <tr><td>다른 Subnet</td><td>Gateway 또는 next hop 사용</td><td>Gateway/next hop의 MAC</td></tr>
+        </tbody>
+      </table>
+
+      <h3>동일 Node, 같은 L2 Bridge에 있는 두 Pod</h3>
+      <ol>
+        <li>Pod A가 Pod B의 IP로 Packet을 만든다.</li>
+        <li>Pod A의 Routing Table이 출력 Interface와 next hop을 정한다.</li>
+        <li>Pod B의 MAC이 Neighbor Cache에 없으면 ARP Request를 보낸다.</li>
+        <li>Broadcast Frame이 veth를 지나 Linux Bridge에 도착한다.</li>
+        <li>Bridge는 Source MAC을 학습하고 ARP Request를 다른 Port로 전달한다.</li>
+        <li>Pod B가 ARP Reply를 보내면 Pod A는 <code>Pod B IP → Pod B MAC</code>을 저장한다.</li>
+        <li>이후 Bridge는 FDB를 보고 Data Frame을 Pod B 쪽 veth로 전달한다.</li>
+      </ol>
+
+      <p class="note">이 예시는 같은 L2 Bridge Subnet을 전제로 한다. CNI가 Gateway 방식이나 L3 Routing을 사용하면 Pod가 최종 Pod의 MAC이 아니라 Gateway MAC을 조회할 수 있다.</p>
+
+      <div class="refs">
+        <p>참고: <a href="https://man7.org/linux/man-pages/man8/ip-route.8.html">ip-route(8)</a></p>
+        <p>참고: <a href="https://man7.org/linux/man-pages/man7/arp.7.html">arp(7)</a></p>
+        <p>참고: <a href="https://man7.org/linux/man-pages/man8/ip-neighbour.8.html">ip-neighbour(8)</a></p>
+      </div>
+    </section>
+
+    <section id="netfilter">
+      <h2>5. Netfilter / iptables</h2>
+
+      <h3>Netfilter</h3>
+      <p>Netfilter는 Linux Kernel의 Packet 처리 경로에 Hook을 제공하는 Framework다. Kernel Module이나 규칙은 이 Hook에서 Packet을 허용하거나 차단하고, 주소를 변환하거나 기록할 수 있다.</p>
+
+      <h3>iptables</h3>
+      <p>iptables는 Netfilter에 사용할 규칙을 설정하고 조회하는 사용자 공간 도구다. Netfilter와 iptables는 같은 말이 아니다.</p>
+
+      <pre><code>수신 Packet
+  → PREROUTING
+  → Routing 판단
+      ├─ Local 목적지 → INPUT → Local Process
+      └─ 다른 Interface → FORWARD → POSTROUTING → 송신
+
+Local Process가 만든 Packet
+  → OUTPUT → POSTROUTING → 송신</code></pre>
+
+      <table>
+        <thead><tr><th>항목</th><th>하는 일</th></tr></thead>
+        <tbody>
+          <tr><td>Routing Table</td><td>Packet을 어디로 보낼지 정한다.</td></tr>
+          <tr><td>Netfilter</td><td>Packet 처리 경로에서 규칙을 적용한다.</td></tr>
+          <tr><td>iptables</td><td>Netfilter 규칙을 설정하고 확인한다.</td></tr>
+        </tbody>
+      </table>
+
+      <p>Bridge로 L2 Forwarding되는 Frame이 항상 IPv4 <code>FORWARD</code> Chain을 지나는 것은 아니다. <code>br_netfilter</code> 설정에 따라 Bridged Traffic이 IP Netfilter Hook의 영향을 받을 수 있다.</p>
+
+      <pre><code># iptables 규칙 확인
+iptables-save
+
+# nftables를 사용하는 환경
+nft list ruleset
+
+# Bridge Traffic의 iptables 처리 설정 확인
+lsmod | grep br_netfilter
+sysctl net.bridge.bridge-nf-call-iptables</code></pre>
+
+      <div class="question">
+        <p><strong>질문 3.</strong> <code>br_netfilter</code>를 끄면 Linux Bridge 자체가 동작하지 않을까?</p>
+        <p>Bridge의 L2 Forwarding은 계속 동작한다. 달라지는 부분은 Bridged Traffic을 IP Netfilter Hook에서 처리하는 방식이다.</p>
+      </div>
+
+      <div class="refs">
+        <p>참고: <a href="https://www.netfilter.org/">The netfilter.org project</a></p>
+        <p>참고: <a href="https://www.netfilter.org/documentation/HOWTO/netfilter-hacking-HOWTO-3.html">Netfilter Architecture</a></p>
+        <p>참고: <a href="https://docs.kernel.org/networking/bridge.html">Linux Ethernet Bridging - Netfilter notes</a></p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="wrap">Byun gimok · Week 1</footer>
+</body>
+</html>
