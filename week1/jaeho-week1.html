@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>쿠버네티스 네트워킹 — 커널 밑바닥부터</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20,500,0,0&display=block" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f6f9fc;
+    --grid:#dce8f2;
+    --ink:#16324a;
+    --ink-mid:#4a627a;
+    --blue:#1d6fd1;
+    --hl:#ffe14d;
+    --hl-soft:#fff6c2;
+    --green:#1e9e6a;
+    --red:#d9534f;
+    --note:#fff9d6;
+    --note-edge:#f0dd8a;
+    --code-bg:#132435;
+    --code-txt:#d7e6f5;
+    --card:#ffffff;
+    --shadow:0 2px 10px rgba(22,50,74,.08);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo',sans-serif;
+    color:var(--ink);
+    background-color:var(--paper);
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size:28px 28px;
+    line-height:1.75;
+    font-size:16px;
+  }
+  .wrap{max-width:860px;margin:0 auto;padding:0 20px 100px}
+  header{padding:64px 0 40px;text-align:center}
+  .eyebrow{
+    display:inline-block;font-size:13px;font-weight:700;letter-spacing:.14em;
+    color:var(--blue);border:1.5px solid var(--blue);border-radius:999px;
+    padding:4px 14px;margin-bottom:18px;background:#fff;
+  }
+  h1{font-size:clamp(30px,6vw,46px);font-weight:700;line-height:1.3;letter-spacing:-.02em}
+  h1 .mark{background:linear-gradient(transparent 55%, var(--hl) 55%);padding:0 4px}
+  .paper-card{
+    background:var(--card);border-radius:16px;box-shadow:var(--shadow);
+    padding:24px 28px;margin:24px 0 48px;border-left:6px solid var(--blue);
+  }
+  .paper-card dl{display:grid;grid-template-columns:110px 1fr;gap:6px 14px;font-size:14.5px}
+  .paper-card dt{font-weight:700;color:var(--ink-mid)}
+  .paper-card dd{color:var(--ink)}
+  @media(max-width:520px){.paper-card dl{grid-template-columns:1fr}}
+  .quest{background:var(--card);border-radius:16px;box-shadow:var(--shadow);padding:28px 28px 20px;margin:16px 0 56px}
+  .quest h2{font-size:15px;letter-spacing:.12em;color:var(--ink-mid);margin-bottom:18px;font-weight:700}
+  .quest ol{list-style:none;position:relative;padding-left:36px}
+  .quest ol::before{content:"";position:absolute;left:13px;top:8px;bottom:14px;width:2px;background:repeating-linear-gradient(var(--blue) 0 6px, transparent 6px 12px)}
+  .quest li{position:relative;padding:6px 0 14px}
+  .quest li::before{content:"";position:absolute;left:-30px;top:12px;width:12px;height:12px;border-radius:50%;background:#fff;border:3px solid var(--blue)}
+  .quest a{color:var(--ink);text-decoration:none;font-weight:500}
+  .quest a:hover{color:var(--blue)}
+  .quest .lv{font-size:12px;font-weight:700;color:var(--blue);margin-right:8px;font-family:'IBM Plex Mono',monospace}
+  section{margin:0 0 72px}
+  .ch-head{display:flex;align-items:baseline;gap:14px;margin-bottom:6px;flex-wrap:wrap}
+  .ch-num{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;background:var(--ink);color:#fff;border-radius:6px;padding:3px 10px;white-space:nowrap}
+  h2.ch-title{font-size:clamp(22px,4vw,30px);font-weight:700;letter-spacing:-.02em}
+  .ch-goal{font-size:14px;color:var(--ink-mid);margin-bottom:24px;padding-left:2px}
+  .ch-goal b{color:var(--green)}
+  h3{font-size:19px;margin:34px 0 12px;font-weight:700}
+  h3 .tag{font-size:12px;font-weight:700;color:#fff;background:var(--blue);border-radius:4px;padding:2px 8px;vertical-align:2px;margin-right:8px}
+  p{margin-bottom:14px}
+  strong{background:linear-gradient(transparent 62%, var(--hl) 62%);padding:0 2px}
+  ul.plain{padding-left:22px;margin-bottom:14px}
+  ul.plain li{margin-bottom:8px}
+  ol.steps{padding-left:24px;margin-bottom:14px}
+  ol.steps li{margin-bottom:10px}
+  blockquote.claim{border-left:4px solid var(--blue);padding:8px 18px;margin:16px 0;background:#fff;border-radius:0 10px 10px 0;font-size:15.5px}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin:20px 0}
+  .card{background:var(--card);border-radius:12px;box-shadow:var(--shadow);padding:18px 20px;border-top:4px solid var(--blue)}
+  .card h4{font-size:16px;margin-bottom:6px}
+  .card .en{font-size:12px;color:var(--ink-mid);font-family:'IBM Plex Mono',monospace;display:block;margin-bottom:8px}
+  .card p{font-size:14.5px;margin:0;color:var(--ink-mid)}
+  .card p b{color:var(--ink)}
+  .term{background:var(--code-bg);color:var(--code-txt);border-radius:12px;margin:18px 0;overflow:hidden;box-shadow:var(--shadow)}
+  .term .bar{display:flex;align-items:center;gap:6px;padding:9px 14px;background:rgba(255,255,255,.06);font-size:12px;color:#9fb6cb;font-family:'IBM Plex Mono',monospace}
+  .term .bar::before{content:"";width:10px;height:10px;border-radius:50%;background:#ff5f57;box-shadow:16px 0 0 #febc2e, 32px 0 0 #28c840;margin-right:36px}
+  .term pre{padding:16px 18px;overflow-x:auto;font-family:'IBM Plex Mono',monospace;font-size:13.5px;line-height:1.7}
+  .term .c{color:#6f8ba3}
+  .term .k{color:#7dc4ff}
+  .term .s{color:#a8e6a1}
+  table{width:100%;border-collapse:collapse;margin:18px 0;background:var(--card);border-radius:12px;overflow:hidden;box-shadow:var(--shadow);font-size:14.5px}
+  th{background:var(--ink);color:#fff;text-align:left;padding:10px 14px;font-weight:500}
+  td{padding:10px 14px;border-bottom:1px solid #eef3f8;vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  td:first-child{white-space:nowrap;font-weight:700}
+  .flow{display:flex;flex-wrap:wrap;align-items:stretch;gap:0;margin:20px 0;justify-content:center}
+  .flow .box{background:var(--card);border:2px solid var(--ink);border-radius:10px;padding:12px 16px;text-align:center;min-width:150px;flex:1;max-width:220px}
+  .flow .box b{display:block;font-size:15px}
+  .flow .box span{font-size:12.5px;color:var(--ink-mid)}
+  .flow .arrow{display:flex;align-items:center;padding:0 10px;font-size:22px;color:var(--blue);font-weight:700}
+  @media(max-width:640px){.flow{flex-direction:column;align-items:stretch}.flow .box{max-width:none}.flow .arrow{justify-content:center;transform:rotate(90deg);padding:2px 0}}
+  .tip{border-radius:10px;padding:14px 18px;margin:18px 0;font-size:14.5px;background:#e6f6ee;border-left:4px solid var(--green)}
+  .tip b{display:block;margin-bottom:4px}
+  .hg-fig{background:var(--card);border-radius:14px;box-shadow:var(--shadow);padding:20px;margin:20px 0;text-align:center}
+  .hg-fig svg{max-width:100%;height:auto}
+  .hg-fig figcaption{font-size:13px;color:var(--ink-mid);margin-top:10px}
+  details.quiz{background:var(--card);border-radius:10px;box-shadow:var(--shadow);padding:14px 18px;margin:12px 0}
+  details.quiz summary{cursor:pointer;font-weight:700;font-size:15px}
+  details.quiz summary::marker{color:var(--blue)}
+  details.quiz .ans{margin-top:10px;padding-top:10px;border-top:1px dashed var(--grid);font-size:14.5px;color:var(--ink-mid)}
+  details.quiz .ans b{color:var(--green)}
+  code.inline{font-family:'IBM Plex Mono',monospace;font-size:.9em;background:#e8eff7;border-radius:4px;padding:1px 6px;color:#0f4c92}
+  @media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <span class="eyebrow">CLOUD CLUB · NETWORKING WEEK 1</span>
+    <h1>패킷은 <span class="mark">Pod 안</span>에서<br>노드 밖까지 어떻게 흘러가나</h1>
+  </header>
+
+  <div class="paper-card">
+    <dl>
+      <dt>다루는 범위</dt><dd>컴포넌트 구조 → netns·veth·bridge → 라우팅·ARP → iptables 순으로 쌓아가는 Pod 네트워킹</dd>
+      <dt>한 줄 요약</dt><dd>Pod가 뜨고 통신하기까지 커널이 하는 일은 결국 <b>격리 → 연결 → 길찾기 → 규칙 적용</b> 네 단계</dd>
+    </dl>
+  </div>
+
+  <nav class="quest" aria-label="목차">
+    <h2>🗺️ 학습 경로</h2>
+    <ol>
+      <li><span class="lv">1.</span><a href="#ch1">Kubernetes 컴포넌트 Overview</a></li>
+      <li><span class="lv">2.</span><a href="#ch2">Network Namespace · veth · Bridge</a></li>
+      <li><span class="lv">3.</span><a href="#ch3">TCP/IP Stack · Routing · ARP</a></li>
+      <li><span class="lv">4.</span><a href="#ch4">Netfilter · iptables</a></li>
+      <li><span class="lv">5.</span><a href="#ch5">전체 경로 한 장으로 몰아보기</a></li>
+    </ol>
+  </nav>
+
+  <section id="ch1">
+    <div class="ch-head"><span class="ch-num">1</span><h2 class="ch-title">Kubernetes 컴포넌트 Overview</h2></div>
+    <ul class="plain">
+      <li>클러스터 = <strong>Control Plane</strong> + <strong>Node(Worker)</strong> 두 영역</li>
+      <li>Control Plane → 결정·기록만 담당</li>
+      <li>Node → 실제 패킷 처리 담당</li>
+    </ul>
+
+    <h3><span class="tag">STEP 1</span>Control Plane 구성 요소</h3>
+    <table>
+      <tr><th>컴포넌트</th><th>역할</th><th>네트워킹 관점 포인트</th></tr>
+      <tr><td>kube-apiserver</td><td>클러스터의 유일한 <b>진입점</b>(REST API)</td><td>Service·Endpoint·NetworkPolicy도 결국 <b>etcd</b>에 저장되는 상태값. apiserver 자체는 <b>패킷을 처리하지 않음</b></td></tr>
+      <tr><td>etcd</td><td>클러스터 상태를 저장하는 <b>분산 key-value store</b></td><td>Pod IP, ClusterIP, Endpoint 목록 등 현재 상태의 <b>단일 진실 공급원</b></td></tr>
+      <tr><td>kube-scheduler</td><td>새 Pod를 어느 Node에 배치할지 결정</td><td>스케줄링 시점엔 아직 <b>IP 없음</b> — Node에 뜬 후에야 CNI가 IP 할당</td></tr>
+      <tr><td>controller-manager</td><td>ReplicaSet·Endpoint·Node 등 <b>컨트롤러 루프</b> 실행</td><td>Endpoint Controller가 Selector와 매칭되는 Pod IP 목록 갱신 — <b>kube-proxy가 참조하는 데이터의 출처</b></td></tr>
+      <tr><td>cloud-controller-manager</td><td>클라우드 프로바이더 연동</td><td>LoadBalancer 타입 Service 생성 시 <b>실제 클라우드 LB 프로비저닝</b></td></tr>
+    </table>
+
+    <h3><span class="tag">STEP 2</span>Node(Worker) 구성 요소</h3>
+    <table>
+      <tr><th>컴포넌트</th><th>역할</th><th>네트워킹 관점 포인트</th></tr>
+      <tr><td>kubelet</td><td>해당 Node의 <b>Pod 생명주기 관리</b> 에이전트</td><td>CRI로 컨테이너 실행, 네트워크 설정은 <b>CNI 플러그인에 위임</b></td></tr>
+      <tr><td>Container Runtime</td><td>실제 컨테이너 프로세스 생성·실행</td><td>Pod의 <b>pause 컨테이너</b>가 먼저 뜨고 Network Namespace 소유 — 같은 Pod 내 다른 컨테이너는 join만</td></tr>
+      <tr><td>CNI 플러그인</td><td>Pod에 실제 <b>네트워크 인터페이스·IP</b> 부여</td><td>veth pair 생성, bridge 또는 라우팅 테이블 연결, <b>IPAM</b>까지 담당</td></tr>
+      <tr><td>kube-proxy</td><td>ClusterIP를 실제 Pod IP로 라우팅되게 규칙 구성</td><td>기본은 <b>iptables</b>(또는 IPVS) — Endpoint 목록 watch하며 규칙 계속 갱신</td></tr>
+    </table>
+
+    <figure class="hg-fig">
+      <svg viewBox="0 0 820 480" xmlns="http://www.w3.org/2000/svg">
+        <text x="210" y="48" text-anchor="middle" font-family="Material Symbols Outlined" font-size="46" fill="#16324a">person</text>
+        <text x="210" y="80" text-anchor="middle" font-family="Pretendard" font-size="12" font-weight="700" fill="#16324a">kubectl (사용자)</text>
+
+        <rect x="30" y="100" width="360" height="330" rx="16" fill="#eef5fc" stroke="#1d6fd1" stroke-width="2"/>
+        <text x="210" y="128" text-anchor="middle" font-size="15" font-weight="700" fill="#1d6fd1"><tspan font-family="Material Symbols Outlined" font-size="18" dy="1">hub</tspan><tspan font-family="Pretendard" dx="6">Control Plane</tspan></text>
+
+        <rect x="110" y="140" width="200" height="70" rx="10" fill="#ffffff" stroke="#e0a800" stroke-width="3"/>
+        <text x="210" y="162" text-anchor="middle" font-family="Material Symbols Outlined" font-size="18" fill="#8a6d1a">api</text>
+        <text x="210" y="182" text-anchor="middle" font-family="IBM Plex Mono" font-size="12.5" font-weight="700" fill="#16324a">apiserver</text>
+        <text x="210" y="198" text-anchor="middle" font-family="Pretendard" font-size="10" fill="#4a627a">REST API 진입점</text>
+
+        <rect x="50" y="225" width="140" height="70" rx="10" fill="#ffffff" stroke="#1d6fd1" stroke-width="1.5"/>
+        <text x="120" y="247" text-anchor="middle" font-family="Material Symbols Outlined" font-size="17" fill="#1d6fd1">database</text>
+        <text x="120" y="267" text-anchor="middle" font-family="IBM Plex Mono" font-size="12" font-weight="700" fill="#16324a">etcd</text>
+        <text x="120" y="283" text-anchor="middle" font-family="Pretendard" font-size="10" fill="#4a627a">상태 저장소</text>
+
+        <rect x="220" y="225" width="140" height="70" rx="10" fill="#ffffff" stroke="#1d6fd1" stroke-width="1.5"/>
+        <text x="290" y="247" text-anchor="middle" font-family="Material Symbols Outlined" font-size="17" fill="#1d6fd1">event</text>
+        <text x="290" y="267" text-anchor="middle" font-family="IBM Plex Mono" font-size="12" font-weight="700" fill="#16324a">scheduler</text>
+        <text x="290" y="283" text-anchor="middle" font-family="Pretendard" font-size="10" fill="#4a627a">Node 배치 결정</text>
+
+        <rect x="50" y="310" width="310" height="70" rx="10" fill="#ffffff" stroke="#1d6fd1" stroke-width="1.5"/>
+        <text x="205" y="332" text-anchor="middle" font-family="Material Symbols Outlined" font-size="17" fill="#1d6fd1">tune</text>
+        <text x="205" y="352" text-anchor="middle" font-family="IBM Plex Mono" font-size="12" font-weight="700" fill="#16324a">controller-manager</text>
+        <text x="205" y="368" text-anchor="middle" font-family="Pretendard" font-size="10" fill="#4a627a">Endpoint 목록 갱신</text>
+
+        <text x="210" y="410" text-anchor="middle" font-family="Pretendard" font-size="12" fill="#4a627a">"무엇을 할지" 결정 · 기록</text>
+
+        <rect x="430" y="100" width="360" height="330" rx="16" fill="#eefaf3" stroke="#1e9e6a" stroke-width="2"/>
+        <text x="610" y="128" text-anchor="middle" font-size="15" font-weight="700" fill="#1e9e6a"><tspan font-family="Material Symbols Outlined" font-size="18" dy="1">dns</tspan><tspan font-family="Pretendard" dx="6">Node (Worker)</tspan></text>
+
+        <rect x="510" y="140" width="200" height="70" rx="10" fill="#ffffff" stroke="#e0a800" stroke-width="3"/>
+        <text x="610" y="162" text-anchor="middle" font-family="Material Symbols Outlined" font-size="18" fill="#8a6d1a">smart_toy</text>
+        <text x="610" y="182" text-anchor="middle" font-family="IBM Plex Mono" font-size="12.5" font-weight="700" fill="#16324a">kubelet</text>
+        <text x="610" y="198" text-anchor="middle" font-family="Pretendard" font-size="10" fill="#4a627a">Pod 감지·생성 지시</text>
+
+        <rect x="450" y="225" width="140" height="70" rx="10" fill="#ffffff" stroke="#1e9e6a" stroke-width="1.5"/>
+        <text x="520" y="247" text-anchor="middle" font-family="Material Symbols Outlined" font-size="17" fill="#1e9e6a">inventory_2</text>
+        <text x="520" y="266" text-anchor="middle" font-family="IBM Plex Mono" font-size="10.5" font-weight="700" fill="#16324a">Container</text>
+        <text x="520" y="279" text-anchor="middle" font-family="IBM Plex Mono" font-size="10.5" font-weight="700" fill="#16324a">Runtime</text>
+
+        <rect x="620" y="225" width="140" height="70" rx="10" fill="#ffffff" stroke="#1e9e6a" stroke-width="1.5"/>
+        <text x="690" y="247" text-anchor="middle" font-family="Material Symbols Outlined" font-size="17" fill="#1e9e6a">lan</text>
+        <text x="690" y="267" text-anchor="middle" font-family="Pretendard" font-size="12" font-weight="700" fill="#16324a">CNI 플러그인</text>
+        <text x="690" y="283" text-anchor="middle" font-family="Pretendard" font-size="10" fill="#4a627a">netns·veth·IP</text>
+
+        <rect x="450" y="310" width="310" height="70" rx="10" fill="#ffffff" stroke="#1e9e6a" stroke-width="1.5"/>
+        <text x="605" y="332" text-anchor="middle" font-family="Material Symbols Outlined" font-size="17" fill="#1e9e6a">route</text>
+        <text x="605" y="352" text-anchor="middle" font-family="IBM Plex Mono" font-size="12" font-weight="700" fill="#16324a">kube-proxy</text>
+        <text x="605" y="368" text-anchor="middle" font-family="Pretendard" font-size="10" fill="#4a627a">iptables/IPVS 규칙 갱신</text>
+
+        <text x="610" y="410" text-anchor="middle" font-family="Pretendard" font-size="12" fill="#4a627a">"실제로 어떻게" 실행 · 처리</text>
+
+        <line x1="150" y1="210" x2="120" y2="225" stroke="#9fb6cb" stroke-width="1.5" marker-end="url(#am)"/>
+        <line x1="270" y1="210" x2="290" y2="225" stroke="#9fb6cb" stroke-width="1.5" marker-end="url(#am)"/>
+
+        <line x1="210" y1="96" x2="210" y2="138" stroke="#16324a" stroke-width="2" marker-end="url(#am)"/>
+        <circle cx="234" cy="117" r="12" fill="#16324a"/><text x="234" y="121" text-anchor="middle" font-family="Pretendard" font-size="11" font-weight="700" fill="#fff">1</text>
+
+        <line x1="390" y1="165" x2="428" y2="165" stroke="#e0a800" stroke-width="2.5" marker-end="url(#ay)"/>
+        <circle cx="409" cy="145" r="12" fill="#e0a800"/><text x="409" y="149" text-anchor="middle" font-family="Pretendard" font-size="11" font-weight="700" fill="#fff">2</text>
+
+        <line x1="428" y1="188" x2="390" y2="188" stroke="#e0a800" stroke-width="2.5" marker-end="url(#ay)"/>
+        <circle cx="409" cy="210" r="12" fill="#e0a800"/><text x="409" y="214" text-anchor="middle" font-family="Pretendard" font-size="11" font-weight="700" fill="#fff">3</text>
+
+        <line x1="560" y1="210" x2="520" y2="225" stroke="#1e9e6a" stroke-width="2" marker-end="url(#ag)"/>
+        <circle cx="546" cy="213" r="12" fill="#1e9e6a"/><text x="546" y="217" text-anchor="middle" font-family="Pretendard" font-size="11" font-weight="700" fill="#fff">4</text>
+
+        <line x1="660" y1="210" x2="690" y2="225" stroke="#1e9e6a" stroke-width="2" marker-end="url(#ag)"/>
+        <circle cx="672" cy="213" r="12" fill="#1e9e6a"/><text x="672" y="217" text-anchor="middle" font-family="Pretendard" font-size="11" font-weight="700" fill="#fff">5</text>
+
+        <line x1="360" y1="345" x2="448" y2="345" stroke="#4a627a" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#am)"/>
+        <circle cx="404" cy="345" r="12" fill="#4a627a"/><text x="404" y="349" text-anchor="middle" font-family="Pretendard" font-size="11" font-weight="700" fill="#fff">6</text>
+
+        <defs>
+          <marker id="am" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#16324a"/></marker>
+          <marker id="ay" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#e0a800"/></marker>
+          <marker id="ag" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#1e9e6a"/></marker>
+        </defs>
+      </svg>
+      <figcaption>노란 테두리 = 각 영역의 창구 역할(apiserver·kubelet) — 숫자는 아래 순서와 1:1로 대응</figcaption>
+    </figure>
+
+    <ol class="steps">
+      <li>① <b>kubectl apply</b> 요청 → apiserver 수신</li>
+      <li>② apiserver → kubelet: 이 Node에 배치된 <b>Pod 정보 watch</b>로 전달</li>
+      <li>③ kubelet → apiserver: <b>Pod 상태·IP 보고</b></li>
+      <li>④ kubelet → Container Runtime(CRI): <b>pause 포함 컨테이너 생성</b></li>
+      <li>⑤ kubelet → CNI 플러그인: <b>netns·veth 연결, IP 할당</b></li>
+      <li>⑥ controller-manager(Endpoint) 변경 → kube-proxy가 watch해 <b>iptables/IPVS 규칙 갱신</b></li>
+    </ol>
+
+    <h3><span class="tag">STEP 3</span>Pod 생성 시 흐름</h3>
+    <div class="term">
+      <div class="bar">flow.txt</div>
+      <pre><span class="c"># kubectl로 Pod 생성 요청 후 IP 할당까지</span>
+kubectl apply <span class="k">→</span> apiserver가 etcd에 기록
+                <span class="k">→</span> scheduler가 Node 선택, apiserver에 기록
+                <span class="k">→</span> 해당 Node kubelet이 감지
+                <span class="k">→</span> kubelet이 CRI로 pause 포함 컨테이너 생성
+                <span class="k">→</span> kubelet이 CNI 호출(ADD)
+                <span class="k">→</span> CNI가 netns 생성 / veth 연결 / IP 할당
+                <span class="k">→</span> kubelet이 apiserver에 Pod IP 보고
+                <span class="k">→</span> Endpoint Controller가 Service Endpoint 갱신
+                <span class="k">→</span> kube-proxy가 감지 후 iptables/IPVS 규칙 갱신</pre>
+    </div>
+
+    <div class="flow">
+      <div class="box"><b>1</b><span>apiserver·scheduler가 상태 기록</span></div>
+      <div class="arrow">→</div>
+      <div class="box"><b>2</b><span>kubelet이 감지, 컨테이너 생성</span></div>
+      <div class="arrow">→</div>
+      <div class="box"><b>3</b><span>CNI가 netns·veth·IP 구성</span></div>
+      <div class="arrow">→</div>
+      <div class="box"><b>4</b><span>kube-proxy가 규칙 갱신</span></div>
+    </div>
+
+    <details class="quiz">
+      <summary>Q. kubelet은 CNI를 어떤 방식으로 호출할까?</summary>
+      <div class="ans"><b>A.</b> Exec 방식 — 매번 프로세스를 fork해 CNI 바이너리를 실행하고 결과(JSON)를 받는 구조. CNI 실패 시 Pod는 ContainerCreating 상태로 남고, 재시도는 kubelet의 백오프 로직이 담당.</div>
+    </details>
+
+    <div class="tip"><b>💡 핵심 한 줄 요약</b>Control Plane은 상태를 결정하고 기록만 함. 실제 인터페이스 생성·IP 할당·규칙 삽입은 전부 Node 위 kubelet·CNI·kube-proxy 몫.</div>
+  </section>
+
+  <section id="ch2">
+    <div class="ch-head"><span class="ch-num">2</span><h2 class="ch-title">Network Namespace · veth · Bridge</h2></div>
+    <ul class="plain">
+      <li>netns·veth·bridge = Pod 격리 + 같은 Node 내 Pod 간 통신의 핵심 3요소</li>
+    </ul>
+
+    <h3><span class="tag">STEP 1</span>Network Namespace(netns)</h3>
+    <ul class="plain">
+      <li>커널 네트워크 스택(인터페이스·라우팅 테이블·iptables·ARP 테이블·소켓)을 <b>namespace 단위로 완전 분리</b> 가능</li>
+      <li>호스트 기본값: <code class="inline">default</code> namespace 1개</li>
+      <li>새 namespace 생성 시 <b>loopback(lo)까지 새로 뜨는 독립 네트워크 환경</b></li>
+    </ul>
+
+    <div class="cards">
+      <div class="card">
+        <h4>netns</h4><span class="en">network namespace</span>
+        <p><b>Pod = netns 1개.</b> 같은 Pod 안 컨테이너들이 <code class="inline">localhost</code>로 통신 가능한 이유</p>
+      </div>
+      <div class="card">
+        <h4>veth pair</h4><span class="en">virtual ethernet</span>
+        <p>항상 쌍으로 생성되는 가상 랜케이블. 한쪽에 넣은 패킷이 반대쪽으로 그대로 나옴</p>
+      </div>
+      <div class="card">
+        <h4>bridge</h4><span class="en">linux bridge</span>
+        <p>소프트웨어 L2 스위치. MAC 학습으로 같은 Node의 Pod끼리 연결</p>
+      </div>
+    </div>
+
+    <div class="term">
+      <div class="bar">terminal — netns 생성</div>
+      <pre><span class="k">ip netns add</span> ns1
+<span class="k">ip netns exec</span> ns1 ip addr        <span class="c"># ns1 안엔 lo만 보임</span>
+<span class="k">ip netns exec</span> ns1 ping 8.8.8.8    <span class="c"># 인터페이스 없어 실패</span></pre>
+    </div>
+
+    <h3><span class="tag">STEP 2</span>veth pair 연결</h3>
+    <ul class="plain">
+      <li>veth 한쪽 끝 → Pod netns 안 <code class="inline">eth0</code></li>
+      <li>veth 반대쪽 끝 → 호스트 root namespace, bridge에 연결</li>
+      <li>Pod가 보는 <code class="inline">eth0</code> = veth pair의 절반, 나머지 절반(호스트 쪽 <code class="inline">vethXXXXXX</code>)이 bridge·라우팅 테이블에 연결</li>
+    </ul>
+
+    <div class="term">
+      <div class="bar">terminal — veth 생성</div>
+      <pre><span class="k">ip link add</span> veth0 type veth peer name veth1
+<span class="k">ip link set</span> veth0 netns ns1              <span class="c"># veth0을 ns1 안으로 이동</span>
+<span class="k">ip netns exec</span> ns1 ip link set veth0 name eth0 up
+<span class="k">ip link set</span> veth1 up                     <span class="c"># veth1은 호스트에 남음</span></pre>
+    </div>
+
+    <h3><span class="tag">STEP 3</span>Linux Bridge와 같은 Node 내 통신</h3>
+    <ul class="plain">
+      <li>여러 veth(호스트 쪽 끝)를 하나의 <b>bridge</b>에 연결</li>
+      <li>bridge가 <b>MAC 주소 학습(learning)</b>으로 같은 Node 위 Pod 간 L2 통신 성립</li>
+      <li>대표 사례: Flannel <code class="inline">cni0</code>, Docker <code class="inline">docker0</code></li>
+    </ul>
+
+    <figure class="hg-fig">
+      <svg viewBox="0 0 720 250" xmlns="http://www.w3.org/2000/svg">
+        <rect x="20" y="40" width="140" height="80" rx="10" fill="#ffffff" stroke="#16324a" stroke-width="2"/>
+        <text x="90" y="65" text-anchor="middle" font-family="Material Symbols Outlined" font-size="20" fill="#16324a">inventory_2</text>
+        <text x="90" y="86" text-anchor="middle" font-family="Pretendard" font-size="13" font-weight="700" fill="#16324a">Pod A</text>
+        <text x="90" y="102" text-anchor="middle" font-family="IBM Plex Mono" font-size="10.5" fill="#4a627a">netns / eth0</text>
+
+        <rect x="290" y="20" width="140" height="120" rx="10" fill="#e6f0fa" stroke="#1d6fd1" stroke-width="2.5"/>
+        <text x="360" y="45" text-anchor="middle" font-family="Material Symbols Outlined" font-size="20" fill="#1d6fd1">lan</text>
+        <text x="360" y="66" text-anchor="middle" font-family="Pretendard" font-size="14" font-weight="700" fill="#1d6fd1">cni0 (bridge)</text>
+        <text x="315" y="85" text-anchor="start" font-family="IBM Plex Mono" font-size="9.5" fill="#4a627a">MAC</text>
+        <text x="380" y="85" text-anchor="start" font-family="IBM Plex Mono" font-size="9.5" fill="#4a627a">Port</text>
+        <line x1="310" y1="90" x2="415" y2="90" stroke="#c7d9ea" stroke-width="1"/>
+        <text x="315" y="103" text-anchor="start" font-family="IBM Plex Mono" font-size="9.5" fill="#16324a">Pod A MAC</text>
+        <text x="380" y="103" text-anchor="start" font-family="IBM Plex Mono" font-size="9.5" fill="#16324a">veth-A</text>
+        <text x="315" y="117" text-anchor="start" font-family="IBM Plex Mono" font-size="9.5" fill="#16324a">Pod B MAC</text>
+        <text x="380" y="117" text-anchor="start" font-family="IBM Plex Mono" font-size="9.5" fill="#16324a">veth-B</text>
+
+        <rect x="560" y="40" width="140" height="80" rx="10" fill="#ffffff" stroke="#16324a" stroke-width="2"/>
+        <text x="630" y="65" text-anchor="middle" font-family="Material Symbols Outlined" font-size="20" fill="#16324a">inventory_2</text>
+        <text x="630" y="86" text-anchor="middle" font-family="Pretendard" font-size="13" font-weight="700" fill="#16324a">Pod B</text>
+        <text x="630" y="102" text-anchor="middle" font-family="IBM Plex Mono" font-size="10.5" fill="#4a627a">netns / eth0</text>
+
+        <line x1="160" y1="80" x2="288" y2="80" stroke="#1d6fd1" stroke-width="2.5" marker-end="url(#arrow)"/>
+        <text x="224" y="56" text-anchor="middle" font-family="IBM Plex Mono" font-size="10" fill="#4a627a">veth-A</text>
+        <circle cx="224" cy="80" r="12" fill="#1d6fd1"/><text x="224" y="84" text-anchor="middle" font-family="Pretendard" font-size="11" font-weight="700" fill="#fff">1</text>
+
+        <line x1="432" y1="80" x2="558" y2="80" stroke="#1d6fd1" stroke-width="2.5" marker-end="url(#arrow)"/>
+        <text x="495" y="56" text-anchor="middle" font-family="IBM Plex Mono" font-size="10" fill="#4a627a">veth-B</text>
+        <circle cx="495" cy="80" r="12" fill="#1d6fd1"/><text x="495" y="84" text-anchor="middle" font-family="Pretendard" font-size="11" font-weight="700" fill="#fff">2</text>
+
+        <line x1="360" y1="140" x2="360" y2="185" stroke="#4a627a" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#arrowg)"/>
+        <text x="360" y="205" text-anchor="middle" font-family="Pretendard" font-size="12" fill="#4a627a">다른 Node로 갈 땐 라우팅 테이블 → VXLAN/BGP로 이어짐(§3)</text>
+
+        <defs>
+          <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#1d6fd1"/></marker>
+          <marker id="arrowg" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#4a627a"/></marker>
+        </defs>
+      </svg>
+      <figcaption>같은 Node 위 Pod A → Pod B 통신 경로: veth pair → cni0 bridge(MAC 학습표 조회) → veth pair</figcaption>
+    </figure>
+
+    <ol class="steps">
+      <li>① Pod A → veth-A(호스트쪽) → cni0 진입, cni0이 <b>출발 MAC 학습</b>(FDB에 기록)</li>
+      <li>② cni0이 <b>목적지 MAC으로 FDB 조회</b> → 일치하는 veth 포트(veth-B)로만 전달(스위칭)</li>
+    </ol>
+
+    <div class="tip"><b>💡 핵심 한 줄 요약</b>netns가 격리를, veth가 연결을, bridge가 같은 Node 내 스위칭을 담당. 다른 Node로 넘어가는 순간 이 셋만으론 부족해 라우팅이 필요.</div>
+  </section>
+
+  <section id="ch3">
+    <div class="ch-head"><span class="ch-num">3</span><h2 class="ch-title">TCP/IP Stack · Routing · ARP</h2></div>
+    <h3><span class="tag">STEP 1</span>TCP/IP 4계층과 캡슐화</h3>
+    <table>
+      <tr><th>계층</th><th>예시</th><th>Pod 통신에서의 의미</th></tr>
+      <tr><td>Application</td><td>HTTP, gRPC</td><td>컨테이너 안 <b>애플리케이션</b>이 다루는 레벨</td></tr>
+      <tr><td>Transport</td><td>TCP, UDP</td><td><b>Service의 port·targetPort</b>가 위치하는 레벨</td></tr>
+      <tr><td>Internet</td><td>IP, ICMP, ARP</td><td><b>Pod IP, Node IP, 라우팅 결정</b>이 일어나는 레벨</td></tr>
+      <tr><td>Link</td><td>Ethernet</td><td>veth·bridge가 다루는 <b>MAC 프레임</b> 레벨</td></tr>
+    </table>
+    <ul class="plain">
+      <li>나갈 때: 상위→하위로 헤더 계속 추가(<b>캡슐화</b>)</li>
+      <li>받을 때: 하위→상위로 헤더 제거(<b>역캡슐화</b>)</li>
+      <li>매 홉(veth·bridge·라우팅)마다 이 레벨에서 MAC·IP 재판단 → 여러 인터페이스를 거치는 것처럼 보이는 이유</li>
+    </ul>
+
+    <figure class="hg-fig">
+      <svg viewBox="0 0 720 175" xmlns="http://www.w3.org/2000/svg">
+        <rect x="20" y="30" width="680" height="80" rx="8" fill="#ffffff" stroke="#16324a" stroke-width="2"/>
+        <text x="60" y="75" text-anchor="middle" font-family="IBM Plex Mono" font-size="12" font-weight="700" fill="#16324a">Ethernet</text>
+        <rect x="100" y="40" width="580" height="60" rx="6" fill="#e6f0fa" stroke="#1d6fd1" stroke-width="2"/>
+        <text x="140" y="75" text-anchor="middle" font-family="IBM Plex Mono" font-size="12" font-weight="700" fill="#1d6fd1">IP</text>
+        <rect x="180" y="48" width="480" height="44" rx="6" fill="#e6f6ee" stroke="#1e9e6a" stroke-width="2"/>
+        <text x="220" y="75" text-anchor="middle" font-family="IBM Plex Mono" font-size="12" font-weight="700" fill="#1e9e6a">TCP</text>
+        <rect x="260" y="55" width="380" height="30" rx="6" fill="#fff9d6" stroke="#f0dd8a" stroke-width="2"/>
+        <text x="450" y="75" text-anchor="middle" font-family="IBM Plex Mono" font-size="12" font-weight="700" fill="#8a6d1a">HTTP/gRPC (Data)</text>
+
+        <text x="130" y="135" text-anchor="middle" font-family="Material Symbols Outlined" font-size="18" fill="#1e9e6a">arrow_outward</text>
+        <text x="180" y="140" text-anchor="start" font-family="Pretendard" font-size="12" fill="#1e9e6a">송신: 안쪽(Data)에서 바깥쪽(Ethernet)으로 헤더를 겹겹이 <b>추가</b></text>
+        <text x="130" y="162" text-anchor="middle" font-family="Material Symbols Outlined" font-size="18" fill="#d9534f">arrow_inward</text>
+        <text x="180" y="167" text-anchor="start" font-family="Pretendard" font-size="12" fill="#d9534f">수신: 바깥쪽(Ethernet)에서 안쪽(Data)으로 헤더를 하나씩 <b>제거</b></text>
+      </svg>
+      <figcaption>나갈 때는 바깥 계층(Ethernet)이 안쪽 계층을 감싸며 캡슐화, 받을 때는 반대로 벗겨냄</figcaption>
+    </figure>
+
+    <h3><span class="tag">STEP 2</span>Routing — 라우팅 테이블</h3>
+    <ul class="plain">
+      <li>패킷 송신 시 라우팅 테이블 참조 → <b>인터페이스·다음 홉(next hop)</b> 결정</li>
+    </ul>
+
+    <div class="term">
+      <div class="bar">terminal — 라우팅 테이블 확인</div>
+      <pre><span class="k">ip route show</span>
+<span class="c"># default via 192.168.1.1 dev eth0</span>
+<span class="c"># 10.244.0.0/24 dev cni0 proto kernel scope link</span>
+<span class="c"># 10.244.1.0/24 via 192.168.1.11 dev eth0   ← 다른 Node의 Pod CIDR</span></pre>
+    </div>
+
+    <ul class="plain">
+      <li>Flannel(오버레이): 다른 Node Pod CIDR 경로를 <b>VXLAN 인터페이스로 캡슐화</b></li>
+      <li>Calico(라우팅 기반): <b>BGP</b>로 라우팅 테이블 자체를 Node 간 광고(advertise)</li>
+    </ul>
+
+    <blockquote class="claim">오버레이 vs 언더레이 차이 = 라우팅 테이블 next hop이 터널 인터페이스냐 물리 인터페이스냐</blockquote>
+
+    <h3><span class="tag">STEP 3</span>ARP — 주소 해석</h3>
+    <ul class="plain">
+      <li>IP = 논리 주소, MAC = 물리(링크 레벨) 주소</li>
+      <li>같은 L2 세그먼트 통신 시 상대 IP → MAC 대응 필요 → <b>ARP</b>로 해결</li>
+    </ul>
+
+    <div class="flow">
+      <div class="box"><b>브로드캐스트</b><span>"이 IP 누구야?"</span></div>
+      <div class="arrow">→</div>
+      <div class="box"><b>대상 응답</b><span>자기 MAC으로 응답</span></div>
+      <div class="arrow">→</div>
+      <div class="box"><b>캐시 저장</b><span>ARP 테이블에 기록</span></div>
+    </div>
+
+    <div class="term">
+      <div class="bar">terminal — ARP 캐시 확인</div>
+      <pre><span class="k">arp -n</span>            <span class="c"># 또는 ip neigh show</span></pre>
+    </div>
+
+    <ul class="plain">
+      <li>같은 Node(bridge 연결) Pod 간: ARP로 MAC 확인 후 <b>직접 통신</b></li>
+      <li>다른 Node Pod 간: 같은 L2 세그먼트 아님 → ARP 없이 곧바로 <b>라우팅(next hop)</b>으로 처리</li>
+    </ul>
+
+    <details class="quiz">
+      <summary>Q. Calico BGP 모드처럼 bridge 없이 라우팅만 있는 경우, Pod의 게이트웨이 ARP는 누가 응답할까?</summary>
+      <div class="ans"><b>A.</b> proxy ARP. veth 반대편(호스트 쪽)이 Pod netns 안 gateway IP에 대한 ARP 요청을 대신 받아 자신의 MAC으로 응답하도록 커널 옵션(<code class="inline">proxy_arp</code>)을 켜둔 구조.</div>
+    </details>
+
+    <div class="tip"><b>💡 핵심 한 줄 요약</b>같은 L2면 ARP로 MAC 찾아 직접 통신, 다른 세그먼트면 ARP 없이 라우팅 테이블의 next hop으로 넘어감 — 이 경계선이 오버레이 네트워크가 필요한 이유.</div>
+  </section>
+
+  <section id="ch4">
+    <div class="ch-head"><span class="ch-num">4</span><h2 class="ch-title">Netfilter · iptables</h2></div>
+    <h3><span class="tag">STEP 1</span>Netfilter Hook Point</h3>
+    <ul class="plain">
+      <li>Netfilter = 커널 네트워크 스택 안 <b>패킷 처리 훅 프레임워크</b></li>
+      <li>패킷이 커널을 지나가는 <b>5개 지점(Hook)</b>에 규칙 적용</li>
+    </ul>
+
+    <figure class="hg-fig">
+      <svg viewBox="0 0 720 260" xmlns="http://www.w3.org/2000/svg">
+        <rect x="20" y="100" width="120" height="50" rx="8" fill="#ffffff" stroke="#16324a" stroke-width="2"/>
+        <text x="55" y="130" text-anchor="middle" font-family="Material Symbols Outlined" font-size="16" fill="#16324a">mail</text>
+        <text x="90" y="130" text-anchor="middle" font-family="Pretendard" font-size="12.5" font-weight="700" fill="#16324a">수신 패킷</text>
+        <circle cx="135" cy="105" r="11" fill="#16324a"/><text x="135" y="109" text-anchor="middle" font-family="Pretendard" font-size="10.5" font-weight="700" fill="#fff">1</text>
+
+        <rect x="190" y="100" width="130" height="50" rx="8" fill="#e6f0fa" stroke="#1d6fd1" stroke-width="2"/>
+        <text x="255" y="130" text-anchor="middle" font-family="Pretendard" font-size="13" font-weight="700" fill="#1d6fd1">PREROUTING</text>
+        <circle cx="315" cy="105" r="11" fill="#1d6fd1"/><text x="315" y="109" text-anchor="middle" font-family="Pretendard" font-size="10.5" font-weight="700" fill="#fff">2</text>
+
+        <rect x="370" y="100" width="130" height="50" rx="8" fill="#ffffff" stroke="#16324a" stroke-width="2" stroke-dasharray="3 3"/>
+        <text x="435" y="130" text-anchor="middle" font-family="Pretendard" font-size="12" font-weight="700" fill="#16324a">라우팅 결정</text>
+        <circle cx="495" cy="105" r="11" fill="#16324a"/><text x="495" y="109" text-anchor="middle" font-family="Pretendard" font-size="10.5" font-weight="700" fill="#fff">3</text>
+
+        <rect x="330" y="30" width="120" height="45" rx="8" fill="#e6f6ee" stroke="#1e9e6a" stroke-width="2"/>
+        <text x="390" y="57" text-anchor="middle" font-family="Pretendard" font-size="13" font-weight="700" fill="#1e9e6a">INPUT</text>
+        <text x="390" y="18" text-anchor="middle" font-family="Pretendard" font-size="11" fill="#4a627a">로컬 프로세스행</text>
+
+        <rect x="330" y="180" width="120" height="45" rx="8" fill="#e6f0fa" stroke="#1d6fd1" stroke-width="2"/>
+        <text x="390" y="207" text-anchor="middle" font-family="Pretendard" font-size="13" font-weight="700" fill="#1d6fd1">FORWARD</text>
+
+        <rect x="530" y="180" width="130" height="45" rx="8" fill="#e6f0fa" stroke="#1d6fd1" stroke-width="2"/>
+        <text x="595" y="207" text-anchor="middle" font-family="Pretendard" font-size="13" font-weight="700" fill="#1d6fd1">POSTROUTING</text>
+        <circle cx="655" cy="185" r="11" fill="#1d6fd1"/><text x="655" y="189" text-anchor="middle" font-family="Pretendard" font-size="10.5" font-weight="700" fill="#fff">4</text>
+
+        <rect x="530" y="30" width="130" height="45" rx="8" fill="#fdecec" stroke="#d9534f" stroke-width="2"/>
+        <text x="595" y="57" text-anchor="middle" font-family="Pretendard" font-size="13" font-weight="700" fill="#d9534f">OUTPUT</text>
+        <text x="595" y="18" text-anchor="middle" font-family="Pretendard" font-size="11" fill="#4a627a">로컬 프로세스 발신</text>
+
+        <text x="595" y="245" text-anchor="middle" font-family="Pretendard" font-size="12" fill="#4a627a">송신</text>
+        <circle cx="655" cy="238" r="11" fill="#4a627a"/><text x="655" y="242" text-anchor="middle" font-family="Pretendard" font-size="10.5" font-weight="700" fill="#fff">5</text>
+
+        <text x="255" y="168" text-anchor="middle" font-family="Pretendard" font-size="10.5" fill="#1d6fd1">(주로 DNAT: ClusterIP → Pod IP)</text>
+        <text x="595" y="168" text-anchor="middle" font-family="Pretendard" font-size="10.5" fill="#1d6fd1">(주로 SNAT: Pod IP → Node IP)</text>
+
+        <line x1="140" y1="125" x2="188" y2="125" stroke="#4a627a" stroke-width="2" marker-end="url(#a2)"/>
+        <line x1="320" y1="125" x2="368" y2="125" stroke="#4a627a" stroke-width="2" marker-end="url(#a2)"/>
+        <line x1="435" y1="98" x2="410" y2="77" stroke="#1e9e6a" stroke-width="2" marker-end="url(#a2)"/>
+        <line x1="435" y1="150" x2="410" y2="178" stroke="#1d6fd1" stroke-width="2" marker-end="url(#a2)"/>
+        <line x1="450" y1="202" x2="528" y2="202" stroke="#1d6fd1" stroke-width="2" marker-end="url(#a2)"/>
+        <line x1="595" y1="180" x2="595" y2="120" stroke="#1d6fd1" stroke-width="2"/>
+        <line x1="595" y1="120" x2="595" y2="78" stroke="#d9534f" stroke-width="2" marker-end="url(#a2)"/>
+        <defs>
+          <marker id="a2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6 Z" fill="#4a627a"/>
+          </marker>
+        </defs>
+      </svg>
+      <figcaption>번호 = 아래 순서와 1:1 대응 (ClusterIP 트래픽 기준 경로)</figcaption>
+    </figure>
+
+    <ol class="steps">
+      <li>① 패킷이 Node NIC으로 <b>수신</b></li>
+      <li>② <b>PREROUTING</b> 통과 — 목적지가 ClusterIP면 여기서 <b>DNAT</b>로 실제 Pod IP로 즉시 치환</li>
+      <li>③ <b>라우팅 결정</b> — 치환된 목적지가 로컬(이 host)이면 INPUT, 아니면 <b>FORWARD</b>로 분기</li>
+      <li>④ <b>POSTROUTING</b> 통과 — 나가는 인터페이스 기준으로 필요하면 <b>SNAT</b>(MASQUERADE) 적용</li>
+      <li>⑤ 최종 <b>송신</b> — 이 시점 이후 패킷의 출발지·목적지는 이미 다 바뀐 상태</li>
+    </ol>
+
+    <ul class="plain">
+      <li><b>PREROUTING</b> — 패킷이 들어오자마자, 라우팅 결정 전 (주로 DNAT)</li>
+      <li><b>INPUT</b> — 목적지가 로컬(이 호스트)인 패킷</li>
+      <li><b>FORWARD</b> — 목적지가 다른 곳이라 통과만 하는 패킷</li>
+      <li><b>OUTPUT</b> — 로컬에서 생성돼 나가는 패킷</li>
+      <li><b>POSTROUTING</b> — 나가기 직전, 마지막 지점 (주로 SNAT/MASQUERADE)</li>
+    </ul>
+
+    <h3><span class="tag">STEP 2</span>iptables 테이블</h3>
+    <table>
+      <tr><th>테이블</th><th>용도</th><th>걸리는 Hook</th></tr>
+      <tr><td>filter</td><td><b>패킷 허용/차단</b>(방화벽)</td><td>INPUT, FORWARD, OUTPUT</td></tr>
+      <tr><td>nat</td><td><b>출발지/목적지 주소·포트 변환</b></td><td>PREROUTING(DNAT), POSTROUTING(SNAT), OUTPUT</td></tr>
+      <tr><td>mangle</td><td>패킷 헤더 수정(<b>TTL, TOS</b> 등)</td><td>전체 훅</td></tr>
+      <tr><td>raw</td><td><b>conntrack 추적 여부</b> 결정</td><td>PREROUTING, OUTPUT</td></tr>
+    </table>
+
+    <h3><span class="tag">STEP 3</span>kube-proxy와의 연결고리</h3>
+    <ul class="plain">
+      <li>kube-proxy(iptables 모드) → Service 생성마다 <code class="inline">nat</code> 테이블에 <b>규칙 체인 자동 생성</b></li>
+    </ul>
+
+    <div class="flow">
+      <div class="box"><b>KUBE-SERVICES</b><span>모든 ClusterIP 매칭</span></div>
+      <div class="arrow">→</div>
+      <div class="box"><b>KUBE-SVC-XXXX</b><span>Service별 체인 점프</span></div>
+      <div class="arrow">→</div>
+      <div class="box"><b>KUBE-SEP-XXXX</b><span>확률적 랜덤 선택</span></div>
+      <div class="arrow">→</div>
+      <div class="box"><b>DNAT</b><span>선택된 Pod IP:Port</span></div>
+    </div>
+
+    <ul class="plain">
+      <li>ClusterIP = 실제로 존재하지 않는 <b>가상 주소</b></li>
+      <li>PREROUTING(또는 OUTPUT) 통과 시 iptables <b>DNAT</b> 규칙으로 실제 Pod IP로 치환</li>
+      <li>응답 패킷은 <b>conntrack</b>(연결 추적 테이블)이 자동 역변환(un-DNAT) — 클라이언트는 Pod IP와 통신했다는 사실을 모름</li>
+    </ul>
+
+    <div class="term">
+      <div class="bar">terminal — 규칙 확인</div>
+      <pre><span class="k">iptables -t nat -L KUBE-SERVICES -n</span>   <span class="c"># ClusterIP 매칭 규칙</span>
+<span class="k">iptables -t nat -L -n | grep -A2 KUBE-SEP</span>  <span class="c"># 실제 DNAT 대상 확인</span>
+<span class="k">conntrack -L</span>                          <span class="c"># un-DNAT 연결 추적 엔트리</span></pre>
+    </div>
+
+    <div class="tip"><b>💡 핵심 한 줄 요약</b>IPVS 모드는 이 규칙을 iptables 체인이 아니라 커널 IPVS로 처리해, Service 수가 많아질수록 iptables 모드보다 성능이 우수.</div>
+  </section>
+
+  <section id="ch5">
+    <div class="ch-head"><span class="ch-num">5</span><h2 class="ch-title">전체 경로 한 장으로 몰아보기</h2></div>
+    <ul class="plain">
+      <li>Pod A → 다른 Node Pod B 통신 경로, 단계별 압축</li>
+    </ul>
+
+    <ol class="steps">
+      <li>Pod A의 애플리케이션이 소켓에 데이터를 씀 → TCP/IP 스택이 헤더를 씌워 캡슐화</li>
+      <li>Pod A netns의 <code class="inline">eth0</code>(veth 절반)으로 나감 → 반대쪽 veth가 호스트에서 수신</li>
+      <li>목적지가 다른 Node의 Pod CIDR임을 라우팅 테이블이 판단 → 같은 세그먼트가 아니라 ARP 없이 next hop으로</li>
+      <li>PREROUTING 훅 통과 시점에 목적지가 로컬이 아니므로 FORWARD로 분기 — 단, Service 경유 트래픽이면 여기서 DNAT로 실제 Pod IP 결정</li>
+      <li>오버레이(VXLAN 캡슐화) 또는 언더레이(BGP 라우팅)를 거쳐 대상 Node로 물리 전달</li>
+      <li>대상 Node에서 라우팅 테이블이 목적지 Pod CIDR를 로컬 veth로 지정 → bridge 또는 라우팅으로 Pod B netns까지 전달</li>
+      <li>Pod B의 TCP/IP 스택이 헤더를 벗겨내며 역캡슐화 → 애플리케이션 소켓 도달</li>
+    </ol>
+  </section>
+
+</div>
+</body>
+</html>
