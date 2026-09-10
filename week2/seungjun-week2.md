@@ -516,20 +516,14 @@ Backend Pod
 
 ## 10. 참고 자료
 
-* Kubernetes Networking
-  https://kubernetes.io/docs/concepts/cluster-administration/networking/
-
-* Kubernetes Network Plugins
-  https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/network-plugins/
+* Kubernetes Networking 공식 문서
+  https://kubernetes.io/ko/docs/concepts/cluster-administration/networking/
 
 * Kubernetes Container Runtime Interface
-  https://kubernetes.io/docs/concepts/architecture/cri/
+  https://kubernetes.io/docs/concepts/containers/cri/
 
 * Kubernetes Service
   https://kubernetes.io/docs/concepts/services-networking/service/
 
-* Kubernetes EndpointSlice
-  https://kubernetes.io/docs/concepts/services-networking/endpoint-slices/
-
-* Kubernetes Ingress
-  https://kubernetes.io/docs/concepts/services-networking/ingress/
+* Kubernetes 네트워크 정리
+  https://yozm.wishket.com/magazine/detail/2251/
