@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kubernetes Networking Model</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f6f9fc; --grid:#dce8f2; --ink:#16324a; --ink-mid:#4a627a;
+    --blue:#1d6fd1; --hl:#ffe14d; --green:#1e9e6a; --red:#d9534f;
+    --note:#fff9d6; --note-edge:#f0dd8a; --code-bg:#132435; --code-txt:#d7e6f5;
+    --card:#ffffff; --shadow:0 2px 10px rgba(22,50,74,.08);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo',sans-serif;
+    color:var(--ink);background-color:var(--paper);
+    background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+    background-size:28px 28px;line-height:1.75;font-size:16px;
+  }
+  .wrap{max-width:860px;margin:0 auto;padding:0 20px 100px}
+  header{padding:64px 0 40px;text-align:center}
+  .eyebrow{display:inline-block;font-size:13px;font-weight:700;letter-spacing:.14em;color:var(--blue);
+    border:1.5px solid var(--blue);border-radius:999px;padding:4px 14px;margin-bottom:18px;background:#fff}
+  h1{font-size:clamp(30px,6vw,46px);font-weight:700;line-height:1.3;letter-spacing:-.02em}
+  h1 .mark{background:linear-gradient(transparent 55%,var(--hl) 55%);padding:0 4px}
+  .subtitle{margin-top:16px;color:var(--ink-mid);font-size:16px}
+  .paper-card{background:var(--card);border-radius:16px;box-shadow:var(--shadow);
+    padding:24px 28px;margin:24px 0 48px;border-left:6px solid var(--blue)}
+  .paper-card dl{display:grid;grid-template-columns:110px 1fr;gap:6px 14px;font-size:14.5px}
+  .paper-card dt{font-weight:700;color:var(--ink-mid)}
+  .paper-card dd{color:var(--ink)}
+  .paper-card dd b{background:linear-gradient(transparent 60%,var(--hl) 60%);padding:0 2px}
+  @media(max-width:520px){.paper-card dl{grid-template-columns:1fr}}
+  .quest{background:var(--card);border-radius:16px;box-shadow:var(--shadow);padding:28px 28px 20px;margin:16px 0 56px}
+  .quest h2{font-size:15px;letter-spacing:.12em;color:var(--ink-mid);margin-bottom:18px;font-weight:700}
+  .quest ol{list-style:none;position:relative;padding-left:36px}
+  .quest ol::before{content:"";position:absolute;left:13px;top:8px;bottom:14px;width:2px;background:repeating-linear-gradient(var(--blue) 0 6px,transparent 6px 12px)}
+  .quest li{position:relative;padding:6px 0 14px}
+  .quest li::before{content:"";position:absolute;left:-30px;top:12px;width:12px;height:12px;border-radius:50%;background:#fff;border:3px solid var(--blue)}
+  .quest a{color:var(--ink);text-decoration:none;font-weight:500}
+  .quest a:hover{color:var(--blue)}
+  .quest .lv{font-size:12px;font-weight:700;color:var(--blue);margin-right:8px;font-family:'IBM Plex Mono',monospace}
+  section{margin:0 0 72px}
+  .ch-head{display:flex;align-items:baseline;gap:14px;margin-bottom:6px;flex-wrap:wrap}
+  .ch-num{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;background:var(--ink);color:#fff;border-radius:6px;padding:3px 10px;white-space:nowrap}
+  h2.ch-title{font-size:clamp(22px,4vw,30px);font-weight:700;letter-spacing:-.02em}
+  .ch-goal{font-size:14px;color:var(--ink-mid);margin-bottom:24px;padding-left:2px}
+  .ch-goal b{color:var(--green)}
+  h3{font-size:19px;margin:34px 0 12px;font-weight:700}
+  h3 .tag{font-size:12px;font-weight:700;color:#fff;background:var(--blue);border-radius:4px;padding:2px 8px;vertical-align:2px;margin-right:8px}
+  p{margin-bottom:14px}
+  strong{background:linear-gradient(transparent 62%,var(--hl) 62%);padding:0 2px}
+  ul.plain{padding-left:22px;margin-bottom:14px}
+  ul.plain li{margin-bottom:8px}
+  ol.steps{padding-left:24px;margin-bottom:14px}
+  ol.steps li{margin-bottom:10px}
+  blockquote.claim{border-left:4px solid var(--blue);padding:8px 18px;margin:16px 0;background:#fff;border-radius:0 10px 10px 0;font-size:15.5px}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin:20px 0}
+  .card{background:var(--card);border-radius:12px;box-shadow:var(--shadow);padding:18px 20px;border-top:4px solid var(--blue)}
+  .card h4{font-size:16px;margin-bottom:6px}
+  .card .en{font-size:12px;color:var(--ink-mid);font-family:'IBM Plex Mono',monospace;display:block;margin-bottom:8px}
+  .card p{font-size:14.5px;margin:0;color:var(--ink-mid)}
+  .card p b{color:var(--ink)}
+  .term{background:var(--code-bg);color:var(--code-txt);border-radius:12px;margin:18px 0;overflow:hidden;box-shadow:var(--shadow)}
+  .term .bar{display:flex;align-items:center;gap:6px;padding:9px 14px;background:rgba(255,255,255,.06);font-size:12px;color:#9fb6cb;font-family:'IBM Plex Mono',monospace}
+  .term .bar::before{content:"";width:10px;height:10px;border-radius:50%;background:#ff5f57;box-shadow:16px 0 0 #febc2e,32px 0 0 #28c840;margin-right:36px}
+  .term pre{padding:16px 18px;overflow-x:auto;font-family:'IBM Plex Mono',monospace;font-size:13.5px;line-height:1.7}
+  .flow{display:flex;flex-wrap:wrap;align-items:stretch;gap:0;margin:20px 0;justify-content:center}
+  .flow .box{background:var(--card);border:2px solid var(--ink);border-radius:10px;padding:12px 16px;text-align:center;min-width:150px;flex:1;max-width:220px}
+  .flow .box b{display:block;font-size:15px}
+  .flow .box span{font-size:12.5px;color:var(--ink-mid)}
+  .flow .arrow{display:flex;align-items:center;padding:0 10px;font-size:22px;color:var(--blue);font-weight:700}
+  @media(max-width:640px){.flow{flex-direction:column;align-items:stretch}.flow .box{max-width:none}.flow .arrow{justify-content:center;transform:rotate(90deg);padding:2px 0}}
+  .tip{border-radius:10px;padding:14px 18px;margin:18px 0;font-size:14.5px;background:#e6f6ee;border-left:4px solid var(--green)}
+  .tip b{display:block;margin-bottom:4px}
+  table{width:100%;border-collapse:collapse;margin:18px 0;background:var(--card);border-radius:12px;overflow:hidden;box-shadow:var(--shadow);font-size:14.5px}
+  th{background:var(--ink);color:#fff;text-align:left;padding:10px 14px;font-weight:500}
+  td{padding:10px 14px;border-bottom:1px solid #eef3f8;vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  td:first-child{white-space:nowrap;font-weight:700}
+  .hg-fig{background:var(--card);border-radius:14px;box-shadow:var(--shadow);padding:20px;margin:20px 0;text-align:center}
+  .hg-fig img{max-width:100%;height:auto;border-radius:10px}
+  .hg-fig figcaption{font-size:13px;color:var(--ink-mid);margin-top:10px}
+  code.inline{font-family:'IBM Plex Mono',monospace;font-size:.9em;background:#e8eff7;border-radius:4px;padding:1px 6px;color:#0f4c92}
+  @media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <span class="eyebrow">CLOUD CLUB · KUBERNETES WEEK 2</span>
+    <h1>Kubernetes <span class="mark">Networking Model</span></h1>
+    <p class="subtitle">kubelet·CRI·CNI가 Pod를 만들고, Service·kube-proxy가 그 Pod로 트래픽을 배달한다</p>
+  </header>
+
+  <div class="paper-card">
+    <dl>
+      <dt>다루는 범위</dt><dd>Kubernetes Networking Model / kubelet·CRI·CNI 동작 흐름 / Pod Network·Pod CIDR·IPAM / kube-proxy와 Service / Service→Pod Packet Flow 추적</dd>
+      <dt>구조</dt><dd>클러스터 관리를 위한 <b>경로①(Control Plane)</b>과 애플리케이션 접근을 위한 <b>경로②(Service/Data Plane)</b> 두 갈래로 나눠서 본다</dd>
+      <dt>한 줄 요약</dt><dd>경로①이 통신 가능한 Pod를 미리 만들어두고, 경로②가 요청이 올 때마다 그 Pod로 트래픽을 <b>실제로 배달</b>한다</dd>
+    </dl>
+  </div>
+
+  <nav class="quest" aria-label="목차">
+    <h2>🗺️ 학습 경로</h2>
+    <ol>
+      <li><span class="lv">1.</span><a href="#ch1">전체 구조 & Networking Model</a></li>
+      <li><span class="lv">2.</span><a href="#ch2">경로① 상세 — Pod 생성 (kubelet·CRI·CNI)</a></li>
+      <li><span class="lv">3.</span><a href="#ch3">경로② 상세 — 트래픽 전달 (Service·kube-proxy)</a></li>
+      <li><span class="lv">4.</span><a href="#ch4">종합 — Service → Pod Packet Flow 추적</a></li>
+    </ol>
+  </nav>
+
+  <section id="ch1">
+    <div class="ch-head"><span class="ch-num">1</span><h2 class="ch-title">전체 구조 & Networking Model</h2></div>
+    <p class="ch-goal">🎯 이 챕터를 끝내면: <b>클러스터 네트워킹이 '관리 경로'와 '접근 경로' 두 갈래로 나뉜다는 큰 그림 파악</b></p>
+
+    <figure class="hg-fig">
+      <img src="../../../../4.%20Archive/attachment/Pasted%20image%2020260910000350.png" alt="Kubernetes 전체 구조">
+      <figcaption>Kubernetes 전체 구조 — 오늘 다룰 두 경로가 클러스터 안 어디에 위치하는지</figcaption>
+    </figure>
+
+    <figure class="hg-fig">
+      <img src="../../../../4.%20Archive/attachment/Pasted%20image%2020260910001802.png" alt="Networking Model 두 경로">
+      <figcaption>Networking Model — kubelet/CRI/CNI 경로와 kube-proxy/Service 경로</figcaption>
+    </figure>
+
+    <ul class="plain">
+      <li><b>kubelet / CRI / CNI</b> — Pod 생성 및 네트워크 연결</li>
+      <li><b>kube-proxy / Service</b> — 생성된 Pod로의 트래픽 전달</li>
+    </ul>
+
+    <h3><span class="tag">①</span>Control Plane 경로 — 클러스터 관리</h3>
+    <ul class="plain">
+      <li>대상: <code class="inline">kubectl apply</code>, <code class="inline">kubectl get pods</code>, <code class="inline">kubectl delete</code> 등 클러스터 상태 조회·변경 명령</li>
+      <li>핵심 개념: <strong>API Server = Kubernetes 관리 요청의 중심 진입점</strong></li>
+      <li>목적: 애플리케이션 사용이 아닌 <b>클러스터 상태 조회·변경</b></li>
+    </ul>
+    <blockquote class="claim">API Server → Scheduler → kubelet → CRI → Container Runtime → Pod 생성</blockquote>
+
+    <h3><span class="tag">②</span>Service / Data Plane 경로 — 애플리케이션 접근</h3>
+    <ul class="plain">
+      <li>대상: Kubernetes 위에서 실행 중인 애플리케이션(Pod)에 대한 접속 요청</li>
+      <li>핵심 개념: <strong>Service = 애플리케이션(Pod)에 접근하기 위한 안정적인 네트워크 진입점</strong></li>
+      <li>기능: Pod 교체·IP 변경 시에도 <b>클라이언트 접근 경로 유지</b></li>
+    </ul>
+    <div class="flow">
+      <div class="box"><b>Client</b><span>요청</span></div>
+      <div class="arrow">→</div>
+      <div class="box"><b>Service</b><span>고정 진입점</span></div>
+      <div class="arrow">→</div>
+      <div class="box"><b>Pod A/B/C</b><span>실제 처리</span></div>
+    </div>
+    <blockquote class="claim">Client → Service → kube-proxy → Pod Network/CNI → Pod</blockquote>
+  </section>
+
+  <section id="ch2">
+    <div class="ch-head"><span class="ch-num">2</span><h2 class="ch-title">경로① 상세 — Pod 생성</h2></div>
+    <p class="ch-goal">🎯 이 챕터를 끝내면: <b>Control Plane이 결정하고, kubelet이 조정하고, CRI·CNI가 실행하는 구조 이해</b></p>
+
+    <figure class="hg-fig">
+      <img src="../../../../4.%20Archive/attachment/Pasted%20image%2020260910011854.png" alt="경로① Pod 생성 상세">
+      <figcaption>경로① 상세 — Control Plane의 결정이 실제 Pod로 이어지는 과정</figcaption>
+    </figure>
+
+    <ul class="plain">
+      <li>전체 순서: <strong>Control Plane이 실행 Worker Node 결정</strong> → 선택된 Node의 <strong>kubelet이 생성·실행 관리</strong> → 컨테이너 실행은 CRI, 네트워크 구성은 CNI에 위임</li>
+      <li>kubelet → CRI → CNI는 직렬 파이프라인이 아니라, <b>kubelet이 Pod 실행을 조정하며 컨테이너 실행은 CRI에, 네트워크 구성은 CNI에 위임</b>하는 구조</li>
+    </ul>
+
+    <h3><span class="tag">STEP 1</span>구성요소 — kubelet · CRI · CNI</h3>
+    <div class="cards">
+      <div class="card">
+        <h4>kubelet</h4><span class="en">Worker Node 관리자</span>
+        <p>각 Worker Node에서 실행, API Server가 할당한 Pod의 <b>목표 상태(Desired State)</b>를 실제 상태와 일치시키도록 지속 관리. 최초 실행뿐 아니라 상태 확인·재시작·볼륨 연결·보고까지 담당</p>
+      </div>
+      <div class="card">
+        <h4>CRI</h4><span class="en">Container Runtime Interface</span>
+        <p>프로그램이 아니라 <b>kubelet과 Container Runtime 사이의 표준 인터페이스</b>. kubelet이 Docker·containerd에 직접 종속되지 않도록 분리해 다양한 Runtime을 사용 가능하게 함</p>
+      </div>
+      <div class="card">
+        <h4>CNI</h4><span class="en">Container Network Interface</span>
+        <p>컨테이너 실행만으로는 미완료 — Pod가 고유 IP로 통신하려면 네트워크 구성이 필요. <b>Pod Network → Pod CIDR → IPAM</b> 순서로 이어지는 세 요소를 구성</p>
+      </div>
+    </div>
+
+    <h3><span class="tag">STEP 2</span>Pod Network → Pod CIDR → IPAM</h3>
+    <figure class="hg-fig">
+      <img src="../../../../4.%20Archive/attachment/Pasted%20image%2020260910015759.png" alt="Pod Network CIDR IPAM 관계도">
+      <figcaption>큰 그물망 안에서 구역을 나누고, 그 구역 안에서 번지수를 하나씩 배정</figcaption>
+    </figure>
+    <div class="term">
+      <div class="bar">예시 — 전체 Pod Network 10.244.0.0/16, Node 2개 기준</div>
+      <pre>Worker Node 1                      Worker Node 2
+Pod CIDR: 10.244.1.0/24            Pod CIDR: 10.244.2.0/24
+ ├─ Pod A → 10.244.1.2              ├─ Pod D → 10.244.2.2
+ ├─ Pod B → 10.244.1.3              └─ Pod E → 10.244.2.3
+ └─ Pod C → 10.244.1.4</pre>
+    </div>
+
+    <h4 style="margin:24px 0 8px;font-size:16px">Pod Network</h4>
+    <ul class="plain">
+      <li>정의: Pod들이 서로 통신하기 위해 사용하는 네트워크 영역</li>
+      <li>기본 원칙: <strong>각 Pod가 고유 IP를 보유</strong></li>
+      <li>범위: 같은 Node뿐 아니라 <b>다른 Node의 Pod와도 통신 가능</b>하도록 구성</li>
+      <li>구현 주체: 실제 연결성은 Calico, Cilium, Flannel 등 <b>CNI 구현체</b>가 구성</li>
+    </ul>
+    <div class="term">
+      <div class="bar">Node 간 통신 예시</div>
+      <pre>Worker Node 1                     Worker Node 2
+
+Pod A                             Pod C
+10.244.1.2  ───────────────────▶  10.244.2.2</pre>
+    </div>
+
+    <h4 style="margin:24px 0 8px;font-size:16px">Pod CIDR — Node별 대역 할당</h4>
+    <ul class="plain">
+      <li>정의: CIDR(<code class="inline">10.244.1.0/24</code> 형식)로 표현되는 IP 주소 범위, Node별로 Pod가 사용할 IP 범위를 분할</li>
+      <li>할당 주체: <strong>kube-controller-manager(Node IPAM Controller)</strong> — 전체 Pod Network(<code class="inline">--cluster-cidr</code>)를 Node 개수만큼 분할</li>
+      <li>주의: Node별 <code class="inline">/24</code> 분할은 <b>가장 일반적인 개념 설명용 구조</b>이며, 실제 구현은 CNI마다 차이</li>
+    </ul>
+    <div class="term">
+      <div class="bar">Node별 대역 할당 과정</div>
+      <pre>① 클러스터 생성 시 전체 Pod Network 지정 (--cluster-cidr=10.244.0.0/16)
+② 신규 Node join 시 Node IPAM Controller가 분할된 CIDR 하나 배정
+③ 해당 Node의 kubelet·CNI가 자신에게 할당된 podCIDR 확인
+④ 이후 Pod 생성 시, CNI/IPAM은 이 podCIDR 범위 안에서만 개별 Pod IP 할당</pre>
+    </div>
+
+    <h4 style="margin:24px 0 8px;font-size:16px">IPAM & Pod Sandbox</h4>
+    <ul class="plain">
+      <li><strong>IPAM(IP Address Management)</strong> — Pod CIDR 내 사용 가능한 IP를 찾아 Pod에 배정·관리하는 기능</li>
+      <li>관리 대상: 사용 중/비어 있는 IP 목록, 신규 Pod IP 배정, Pod 삭제 후 IP 반환</li>
+      <li><b>Pod Sandbox</b> — 컨테이너가 여러 개여도 Kubernetes에서 <strong>Pod는 하나의 네트워크 단위</strong>. 같은 Pod 내 컨테이너는 동일한 Network Namespace·Pod IP 공유</li>
+    </ul>
+    <div class="term">
+      <div class="bar">신규 Pod 생성 시 IPAM 동작</div>
+      <pre>10.244.1.2 → Pod A 사용 중
+10.244.1.3 → Pod B 사용 중
+10.244.1.4 → 사용 가능  ─┐
+10.244.1.5 → 사용 가능   ├─ IPAM이 검색 → 10.244.1.4 선택 → Pod C에 할당
+                         ┘</pre>
+    </div>
+    <div class="tip"><b>💡 핵심 한 줄 요약</b>CNI = 네트워크 전체 구성 담당, IPAM = 그중 IP 주소 할당만 담당. Kubernetes 네트워킹의 기본 단위는 컨테이너가 아니라 Pod</div>
+
+    <h3><span class="tag">STEP 3</span>전체 흐름 & 역할 요약</h3>
+    <div class="term">
+      <div class="bar">kubelet부터 Pod 실행까지</div>
+      <pre>API Server → kubelet →(CRI) Container Runtime →(CNI 호출) CNI
+  └─ Pod용 Network Namespace 연결 / Interface 구성 / IPAM→IP 할당 / Routing 설정
+       └─ Pod 10.244.1.5 완성</pre>
+    </div>
+    <table>
+      <tr><th>구성요소</th><th>핵심 역할</th></tr>
+      <tr><td>kubelet</td><td>Node의 Pod 상태 관리</td></tr>
+      <tr><td>CRI</td><td>kubelet-Runtime 간 표준 인터페이스</td></tr>
+      <tr><td>Container Runtime</td><td>실제 컨테이너 실행</td></tr>
+      <tr><td>CNI</td><td>Pod 네트워크 구성 표준/플러그인 연동</td></tr>
+      <tr><td>Pod Network</td><td>모든 Pod가 IP를 가지고 통신하는 전체 네트워크</td></tr>
+      <tr><td>Pod CIDR</td><td>Pod에게 할당할 수 있는 IP 주소 범위</td></tr>
+      <tr><td>IPAM</td><td>그 범위에서 실제 Pod IP를 선택·관리하는 기능</td></tr>
+    </table>
+    <div class="tip"><b>💡 핵심 한 줄 요약</b>kubelet이 Pod 생명주기 관리, CRI로 컨테이너 실행 환경 구성, CNI가 그 안에서 Pod Network·Pod CIDR·IPAM으로 IP·네트워크 연결성 제공 → 통신 가능한 Pod 실행</div>
+  </section>
+
+  <section id="ch3">
+    <div class="ch-head"><span class="ch-num">3</span><h2 class="ch-title">경로② 상세 — 트래픽 전달</h2></div>
+    <p class="ch-goal">🎯 이 챕터를 끝내면: <b>Service는 고정된 진입점, 실제 배달은 각 Node의 kube-proxy가 담당한다는 구조 이해</b></p>
+
+    <figure class="hg-fig">
+      <img src="../../../../4.%20Archive/attachment/Pasted%20image%2020260910020300.png" alt="경로② 트래픽 전달 상세">
+      <figcaption>경로② 상세 — Service는 진입점 역할, 실행은 kube-proxy가 담당</figcaption>
+    </figure>
+
+    <ul class="plain">
+      <li>전체 순서: <strong>클라이언트가 Service IP로 요청</strong> → 요청 받은 Node의 <strong>kube-proxy가 실제 Pod로 전달(로드밸런싱)</strong></li>
+      <li>Service는 고정된 논리적 진입점 역할만 하고, 트래픽을 실제 Pod로 보내는 실행은 각 Node의 kube-proxy가 담당</li>
+    </ul>
+
+    <h3><span class="tag">STEP 1</span>구성요소</h3>
+    <div class="cards">
+      <div class="card">
+        <h4>Service(ClusterIP)</h4><span class="en">고정 논리적 진입점</span>
+        <p>가상 IP(<code class="inline">10.96.0.10:80</code>)로 노출되는 고정 진입점, 실제 Pod가 아닌 논리적 주소. Selector로 매칭되는 Pod 목록(<b>Endpoints</b>)을 Endpoint Controller가 실시간 갱신</p>
+      </div>
+      <div class="card">
+        <h4>kube-proxy</h4><span class="en">Node별 규칙 엔진</span>
+        <p>각 Worker Node에서 실행, Service IP 트래픽을 <b>실제 Pod IP로 로드밸런싱</b>. iptables 또는 IPVS 규칙으로 동작하며 Endpoint 목록을 watch, Node마다 개별 실행</p>
+      </div>
+    </div>
+
+    <h3><span class="tag">STEP 2</span>전체 흐름 — 요청 처리 3단계</h3>
+    <div class="flow">
+      <div class="box"><b>① Service 요청</b><span>curl 10.96.0.10:80</span></div>
+      <div class="arrow">→</div>
+      <div class="box"><b>② kube-proxy 전달</b><span>로드밸런싱 → Pod B</span></div>
+      <div class="arrow">→</div>
+      <div class="box"><b>③ 응답 반환</b><span>Pod B → 클라이언트</span></div>
+    </div>
+    <ul class="plain">
+      <li>핵심: 클라이언트는 <strong>Service IP만 알면 되고</strong>, 실제 어떤 Pod가 응답했는지·Pod IP가 바뀌었는지는 알 필요 없음</li>
+    </ul>
+
+    <table>
+      <tr><th>구성요소</th><th>핵심 역할</th></tr>
+      <tr><td>Service(ClusterIP)</td><td>고정된 논리적 진입점, Endpoints(Pod 목록) 관리</td></tr>
+      <tr><td>kube-proxy</td><td>Service IP 트래픽을 실제 Pod로 로드밸런싱하는 Node별 규칙 엔진</td></tr>
+    </table>
+    <blockquote class="claim">Service = 고정된 논리적 진입점(Endpoints 관리), kube-proxy = Service IP 트래픽을 실제 Pod로 로드밸런싱하는 각 Node의 규칙 엔진</blockquote>
+  </section>
+
+  <section id="ch4">
+    <div class="ch-head"><span class="ch-num">4</span><h2 class="ch-title">종합 — Service → Pod Packet Flow 추적</h2></div>
+    <p class="ch-goal">🎯 이 챕터를 끝내면: <b>경로①(Pod 생성)과 경로②(트래픽 전달)를 하나의 시나리오로 이어서 추적</b></p>
+
+    <figure class="hg-fig">
+      <img src="../../../../4.%20Archive/attachment/Pasted%20image%2020260910020702.png" alt="종합 Packet Flow 시나리오">
+      <figcaption>클라이언트가 nginx-service(ClusterIP 10.96.0.10:80)로 요청 → 실제로는 Node 1의 Pod B(10.244.1.3)가 응답</figcaption>
+    </figure>
+
+    <p>예시 시나리오: 클라이언트가 <code class="inline">nginx-service</code>(ClusterIP <code class="inline">10.96.0.10:80</code>)로 요청 → 실제로는 Worker Node 1의 <strong>Pod B(10.244.1.3)</strong>가 응답</p>
+
+    <h3><span class="tag">0단계</span>사전 조건 — 경로① 결과물</h3>
+    <ol class="steps">
+      <li>Control Plane이 Worker Node 1을 선택 → <b>kubelet</b>이 nginx Pod 생성·실행 관리</li>
+      <li><b>CRI</b>를 통해 Container Runtime이 컨테이너 실행</li>
+      <li><b>CNI</b>가 Node 1의 Pod CIDR(10.244.1.0/24) 범위 안에서 <b>IPAM</b>으로 Pod IP 10.244.1.3 할당</li>
+      <li>Endpoint Controller가 <code class="inline">nginx-service</code>의 <b>Endpoints</b>에 10.244.1.3(Pod B)을 등록</li>
+    </ol>
+
+    <h3><span class="tag">1~4단계</span>요청 처리 (경로② 실행)</h3>
+    <ol class="steps">
+      <li><b>클라이언트가 Service로 요청</b> — <code class="inline">curl 10.96.0.10:80</code> 실행, 패킷의 목적지는 nginx-service의 ClusterIP·Port. 이 시점 클라이언트는 실제 Pod IP를 전혀 모름</li>
+      <li><b>kube-proxy가 목적지 Pod 선택</b> — 요청이 도달한 Node(예: Node 1)의 kube-proxy가 Endpoints 목록(10.244.1.2, 10.244.1.3, 10.244.2.3 등)을 조회, 로드밸런싱(예: 라운드로빈)으로 10.244.1.3(Pod B) 선택</li>
+      <li><b>선택된 Pod로 패킷 전달</b> — kube-proxy가 iptables/IPVS 규칙에 따라 목적지를 10.96.0.10:80 → 10.244.1.3으로 실제 전달, 여기서부터는 경로①에서 CNI가 구성해 둔 Pod Network를 타고 이동</li>
+      <li><b>Pod가 응답을 클라이언트에게 반환</b> — Pod B(10.244.1.3)가 요청 처리 후 응답 패킷 생성, 응답은 왔던 경로(kube-proxy)를 되짚어 클라이언트로 반환</li>
+    </ol>
+
+    <table>
+      <tr><th>단계</th><th>주체</th><th>핵심 동작</th></tr>
+      <tr><td>0(사전)</td><td>kubelet·CRI·CNI·IPAM</td><td>Pod 생성 및 IP(10.244.1.3) 할당, Endpoints 등록</td></tr>
+      <tr><td>1</td><td>클라이언트</td><td>Service IP(10.96.0.10:80)로 요청</td></tr>
+      <tr><td>2</td><td>kube-proxy</td><td>Endpoints 조회 → 대상 Pod(10.244.1.3) 선택</td></tr>
+      <tr><td>3</td><td>kube-proxy → Pod Network</td><td>선택된 Pod로 패킷 전달</td></tr>
+      <tr><td>4</td><td>Pod → 클라이언트</td><td>응답 반환</td></tr>
+    </table>
+
+    <blockquote class="claim">경로①(kubelet·CRI·CNI·IPAM)이 통신 가능한 Pod를 미리 만들어두고, 경로②(Service·kube-proxy)가 요청이 올 때마다 그 Pod로 트래픽을 실제로 배달한다</blockquote>
+  </section>
+
+</div>
+</body>
+</html>
