@@ -120,10 +120,10 @@ CNI가 kube-proxy의 Service forwarding 기능까지 제공하면 kube-proxy를 
 
 ### CSI / CBI 는 뭔가?
 
-- CRI: Kubernetes ↔ Container Runtime 사이의 표준 인터페이스
+- CRI(Container Runtime Interface): Kubernetes ↔ Container Runtime 사이의 표준 인터페이스
 - CNI: Container/Pod ↔ Network
-- CSI: Pod ↔ Storage -> CNI의 Storage버전
-- CCM: Kubernetes ↔ Cloud Provider API : Kubernetes 공식 문서에서는 CCM을 cloud-specific control logic을 담당하고 cloud provider API와 Kubernetes를 연결하는 control-plane component로 설명
+- CSI(Container Storage Interface): Pod ↔ Storage -> CNI의 Storage버전
+- CCM(Cloud Controller Manager): Kubernetes ↔ Cloud Provider API : Kubernetes 공식 문서에서는 CCM을 cloud-specific control logic을 담당하고 cloud provider API와 Kubernetes를 연결하는 control-plane component로 설명
 
 ```
                     Kubernetes
