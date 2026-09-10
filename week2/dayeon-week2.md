@@ -67,19 +67,21 @@ Pod ──► veth ──► Netfilter ──► Backend Pod
 #### kube-proxy limitation
 
 1) Rule 관리
-iptables 모드에서는 Service와 Endpoint가 많아질수록 관련 rule이 많아짐
 
+iptables 모드에서는 Service와 Endpoint가 많아질수록 관련 rule이 많아짐
+```
 Service 1 ──┐
 Service 2 ──┤
 Service 3 ──┤
    ...      ├──► 많은 iptables rules
 Service N ──┘
-
+```
 패킷이 Service IP로 들어오면 Netfilter가 해당 rule들을 평가해야 하므로 규모가 커질수록 rule processing overhead가 증가할 수 있음
 
 -->> 단, "iptables는 무조건 느리다"라고 쓰는 건 아니고 실제 성능은 rule 구조, 커널, 트래픽 패턴 등에 따라 변동
 
 2) Service / Endpoint 변경 시 rule 동기화
+
 Kubernetes에서는 Service나 EndpointSlice가 계속 변할 수 있음
 
 ```
@@ -97,6 +99,7 @@ iptables/IPVS configuration 업데이트
 질문... 실제 규모 큰 클러스터에서는 이런 configuration 을 얼마나 주기적으로 synchronization 하는지?? 
 
 3) Linux Netfilter 의존성
+
 kube-proxy | iptables/IPVS | Netfilter | Linux Kernel
 
 이 계층에 문제가 생기면 service networking에 영향이 감
@@ -118,11 +121,12 @@ CNI가 kube-proxy의 Service forwarding 기능까지 제공하면 kube-proxy를 
 | **Multus**         | O             | 각 Node에서 추가 network attachment 처리             |
 다만 CNI마다 구조가 달라서 모든 컴포넌트가 반드시 같은 형태의 DaemonSet으로 존재하는 것은 아님
 
-### CSI / CBI 는 뭔가?
+### CSI / CBI / CRI 는 뭔가? + CCM
 
 - CRI(Container Runtime Interface): Kubernetes ↔ Container Runtime 사이의 표준 인터페이스
 - CNI: Container/Pod ↔ Network
 - CSI(Container Storage Interface): Pod ↔ Storage -> CNI의 Storage버전
+- CBI(Container Builder Interface) : CBI provides a vendor-neutral interface for building (and pushing) container images on top of a Kubernetes cluster, with support for several backends -> 공식적인 컴포넌트는 아니고 오픈소스였다...
 - CCM(Cloud Controller Manager): Kubernetes ↔ Cloud Provider API : Kubernetes 공식 문서에서는 CCM을 cloud-specific control logic을 담당하고 cloud provider API와 Kubernetes를 연결하는 control-plane component로 설명
 
 ```
