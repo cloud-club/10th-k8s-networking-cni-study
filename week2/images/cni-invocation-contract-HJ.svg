@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 480" font-family="'Inter', 'Segoe UI', -apple-system, sans-serif">
+  <defs>
+    <filter id="s">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.12"/>
+    </filter>
+    <marker id="a" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#2980b9"/>
+    </marker>
+    <marker id="ap" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#8e44ad"/>
+    </marker>
+    <marker id="ag" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#27ae60"/>
+    </marker>
+    <marker id="ao" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#f39c12"/>
+    </marker>
+  </defs>
+
+  <rect width="820" height="480" fill="#f8fafc" rx="12"/>
+  <text x="410" y="34" text-anchor="middle" font-size="18" font-weight="700" fill="#0f172a">CNI Contract — exec + Environment Variables + stdin/stdout</text>
+
+  <!-- Runtime -->
+  <rect x="28" y="152" width="150" height="70" rx="8" fill="#ffffff" stroke="#27ae60" stroke-width="2" filter="url(#s)"/>
+  <text x="103" y="181" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a">Container</text>
+  <text x="103" y="200" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a">Runtime</text>
+
+  <!-- exec arrow -->
+  <line x1="180" y1="187" x2="250" y2="187" stroke="#27ae60" stroke-width="2.5" marker-end="url(#ag)"/>
+  <text x="215" y="178" text-anchor="middle" font-size="11" font-weight="700" fill="#27ae60">exec</text>
+
+  <!-- ENV box -->
+  <rect x="258" y="70" width="248" height="118" rx="8" fill="#e8f4f8" stroke="#2980b9" stroke-width="1.5" filter="url(#s)"/>
+  <text x="272" y="90" font-size="11.5" font-weight="700" fill="#2980b9">env</text>
+  <text x="272" y="110" font-size="10.5" fill="#0f172a" font-family="monospace">CNI_COMMAND=ADD | DEL | CHECK</text>
+  <text x="272" y="128" font-size="10.5" fill="#0f172a" font-family="monospace">CNI_CONTAINERID=&lt;sandbox id&gt;</text>
+  <text x="272" y="146" font-size="10.5" fill="#0f172a" font-family="monospace">CNI_NETNS=/proc/&lt;pid&gt;/ns/net</text>
+  <text x="272" y="164" font-size="10.5" fill="#0f172a" font-family="monospace">CNI_IFNAME=eth0</text>
+  <text x="272" y="182" font-size="10.5" fill="#0f172a" font-family="monospace">CNI_PATH=/opt/cni/bin</text>
+
+  <!-- stdin box -->
+  <rect x="258" y="200" width="248" height="112" rx="8" fill="#f3ecf8" stroke="#8e44ad" stroke-width="1.5" filter="url(#s)"/>
+  <text x="272" y="220" font-size="11.5" font-weight="700" fill="#8e44ad">stdin</text>
+  <text x="308" y="220" font-size="10" fill="#64748b">/etc/cni/net.d/10-flannel.conflist</text>
+  <text x="272" y="244" font-size="10.5" fill="#0f172a" font-family="monospace">{ "cniVersion": "1.0.0",</text>
+  <text x="272" y="266" font-size="10.5" fill="#0f172a" font-family="monospace">  "type": "bridge",</text>
+  <text x="272" y="288" font-size="10.5" fill="#0f172a" font-family="monospace">  "ipam": { "type": "host-local" } }</text>
+
+  <!-- arrows into plugin -->
+  <line x1="506" y1="129" x2="586" y2="170" stroke="#2980b9" stroke-width="2" marker-end="url(#a)"/>
+  <line x1="506" y1="256" x2="586" y2="212" stroke="#8e44ad" stroke-width="2" marker-end="url(#ap)"/>
+
+  <!-- Plugin -->
+  <rect x="592" y="152" width="196" height="70" rx="8" fill="#ffffff" stroke="#f39c12" stroke-width="2" filter="url(#s)"/>
+  <text x="690" y="181" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a">CNI Plugin</text>
+  <text x="690" y="203" text-anchor="middle" font-size="10.5" fill="#f39c12" font-family="monospace">/opt/cni/bin/bridge</text>
+
+  <!-- stdout return -->
+  <path d="M 690 222 L 690 340 L 103 340 L 103 226" fill="none" stroke="#f39c12" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#ao)"/>
+  <rect x="256" y="322" width="278" height="36" rx="6" fill="#fdf3e3" stroke="#f39c12" stroke-width="1.2"/>
+  <text x="395" y="345" text-anchor="middle" font-size="11" font-weight="600" fill="#0f172a">stdout — Result { interfaces, ips, routes, dns }</text>
+
+  <!-- Divider -->
+  <line x1="28" y1="382" x2="792" y2="382" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="4,4"/>
+  <text x="28" y="404" font-size="12" font-weight="700" fill="#0f172a">Chaining</text>
+
+  <!-- chain -->
+  <rect x="100" y="416" width="150" height="48" rx="8" fill="#ffffff" stroke="#f39c12" stroke-width="1.8" filter="url(#s)"/>
+  <text x="175" y="437" text-anchor="middle" font-size="12" font-weight="700" fill="#0f172a">bridge</text>
+  <text x="175" y="454" text-anchor="middle" font-size="10" fill="#64748b">veth · IP · route</text>
+
+  <line x1="252" y1="440" x2="308" y2="440" stroke="#f39c12" stroke-width="2" marker-end="url(#ao)"/>
+  <text x="280" y="432" text-anchor="middle" font-size="9" fill="#64748b" font-family="monospace">prevResult</text>
+
+  <rect x="314" y="416" width="150" height="48" rx="8" fill="#ffffff" stroke="#f39c12" stroke-width="1.8" filter="url(#s)"/>
+  <text x="389" y="437" text-anchor="middle" font-size="12" font-weight="700" fill="#0f172a">portmap</text>
+  <text x="389" y="454" text-anchor="middle" font-size="10" fill="#64748b">hostPort DNAT</text>
+
+  <line x1="466" y1="440" x2="522" y2="440" stroke="#f39c12" stroke-width="2" marker-end="url(#ao)"/>
+  <text x="494" y="432" text-anchor="middle" font-size="9" fill="#64748b" font-family="monospace">prevResult</text>
+
+  <rect x="528" y="416" width="150" height="48" rx="8" fill="#ffffff" stroke="#f39c12" stroke-width="1.8" filter="url(#s)"/>
+  <text x="603" y="437" text-anchor="middle" font-size="12" font-weight="700" fill="#0f172a">bandwidth</text>
+  <text x="603" y="454" text-anchor="middle" font-size="10" fill="#64748b">tc 대역 제한</text>
+</svg>

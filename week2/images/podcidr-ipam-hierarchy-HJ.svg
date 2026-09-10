@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 840 350" font-family="'Inter', 'Segoe UI', -apple-system, sans-serif">
+  <defs>
+    <filter id="s">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.12"/>
+    </filter>
+  </defs>
+
+  <rect width="840" height="350" fill="#f8fafc" rx="12"/>
+  <text x="420" y="34" text-anchor="middle" font-size="18" font-weight="700" fill="#0f172a">Pod CIDR and IPAM — Address Space Layers</text>
+
+  <!-- Cluster CIDR -->
+  <rect x="26" y="58" width="574" height="256" rx="10" fill="#e8f4f8" stroke="#2980b9" stroke-width="1.8" stroke-dasharray="7,4" filter="url(#s)"/>
+  <text x="44" y="82" font-size="12.5" font-weight="700" fill="#2980b9">Cluster CIDR &#160;10.42.0.0/16</text>
+
+  <!-- node 1 -->
+  <rect x="44" y="96" width="172" height="200" rx="9" fill="#ffffff" stroke="#27ae60" stroke-width="1.8" filter="url(#s)"/>
+  <text x="130" y="120" text-anchor="middle" font-size="12.5" font-weight="700" fill="#0f172a">node-1</text>
+  <rect x="60" y="130" width="140" height="28" rx="6" fill="#eaf7ee" stroke="#27ae60" stroke-width="1"/>
+  <text x="130" y="149" text-anchor="middle" font-size="11" font-weight="700" fill="#27ae60">10.42.0.0/24</text>
+  <rect x="60" y="168" width="140" height="26" rx="5" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1"/>
+  <text x="130" y="186" text-anchor="middle" font-size="10.5" fill="#0f172a">Pod &#160;10.42.0.11</text>
+  <rect x="60" y="200" width="140" height="26" rx="5" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1"/>
+  <text x="130" y="218" text-anchor="middle" font-size="10.5" fill="#0f172a">Pod &#160;10.42.0.12</text>
+  <rect x="60" y="236" width="140" height="44" rx="6" fill="#fdf3e3" stroke="#f39c12" stroke-width="1"/>
+  <text x="130" y="254" text-anchor="middle" font-size="10" font-weight="700" fill="#f39c12">host-local IPAM</text>
+  <text x="130" y="270" text-anchor="middle" font-size="8.5" fill="#64748b">/var/lib/cni/networks/</text>
+
+  <!-- node 2 -->
+  <rect x="230" y="96" width="172" height="200" rx="9" fill="#ffffff" stroke="#27ae60" stroke-width="1.8" filter="url(#s)"/>
+  <text x="316" y="120" text-anchor="middle" font-size="12.5" font-weight="700" fill="#0f172a">node-2</text>
+  <rect x="246" y="130" width="140" height="28" rx="6" fill="#eaf7ee" stroke="#27ae60" stroke-width="1"/>
+  <text x="316" y="149" text-anchor="middle" font-size="11" font-weight="700" fill="#27ae60">10.42.1.0/24</text>
+  <rect x="246" y="168" width="140" height="26" rx="5" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1"/>
+  <text x="316" y="186" text-anchor="middle" font-size="10.5" fill="#0f172a">Pod &#160;10.42.1.7</text>
+  <rect x="246" y="200" width="140" height="26" rx="5" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1"/>
+  <text x="316" y="218" text-anchor="middle" font-size="10.5" fill="#0f172a">Pod &#160;10.42.1.8</text>
+  <rect x="246" y="236" width="140" height="44" rx="6" fill="#fdf3e3" stroke="#f39c12" stroke-width="1"/>
+  <text x="316" y="254" text-anchor="middle" font-size="10" font-weight="700" fill="#f39c12">host-local IPAM</text>
+  <text x="316" y="270" text-anchor="middle" font-size="8.5" fill="#64748b">/var/lib/cni/networks/</text>
+
+  <!-- node 3 -->
+  <rect x="416" y="96" width="168" height="200" rx="9" fill="#ffffff" stroke="#27ae60" stroke-width="1.8" filter="url(#s)"/>
+  <text x="500" y="120" text-anchor="middle" font-size="12.5" font-weight="700" fill="#0f172a">node-3</text>
+  <rect x="432" y="130" width="136" height="28" rx="6" fill="#eaf7ee" stroke="#27ae60" stroke-width="1"/>
+  <text x="500" y="149" text-anchor="middle" font-size="11" font-weight="700" fill="#27ae60">10.42.2.0/24</text>
+  <rect x="432" y="168" width="136" height="26" rx="5" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1"/>
+  <text x="500" y="186" text-anchor="middle" font-size="10.5" fill="#0f172a">Pod &#160;10.42.2.4</text>
+  <rect x="432" y="200" width="136" height="26" rx="5" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1"/>
+  <text x="500" y="218" text-anchor="middle" font-size="10.5" fill="#0f172a">Pod &#160;10.42.2.5</text>
+  <rect x="432" y="236" width="136" height="44" rx="6" fill="#fdf3e3" stroke="#f39c12" stroke-width="1"/>
+  <text x="500" y="254" text-anchor="middle" font-size="10" font-weight="700" fill="#f39c12">host-local IPAM</text>
+  <text x="500" y="270" text-anchor="middle" font-size="8.5" fill="#64748b">/var/lib/cni/networks/</text>
+
+  <!-- Service CIDR -->
+  <rect x="622" y="96" width="192" height="112" rx="10" fill="#fdecea" stroke="#e74c3c" stroke-width="1.8" stroke-dasharray="7,4" filter="url(#s)"/>
+  <text x="718" y="126" text-anchor="middle" font-size="12.5" font-weight="700" fill="#c0392b">Service CIDR</text>
+  <text x="718" y="152" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a">10.96.0.0/12</text>
+  <line x1="644" y1="168" x2="792" y2="168" stroke="#e74c3c" stroke-width="1" stroke-dasharray="3,3"/>
+  <text x="718" y="190" text-anchor="middle" font-size="11" fill="#c0392b">인터페이스 없음</text>
+</svg>

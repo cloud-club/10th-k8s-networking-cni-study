@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 545" font-family="'Inter', 'Segoe UI', -apple-system, sans-serif">
+  <defs>
+    <filter id="s">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.12"/>
+    </filter>
+    <marker id="a" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#2980b9"/>
+    </marker>
+    <marker id="ad" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#94a3b8"/>
+    </marker>
+  </defs>
+
+  <rect width="820" height="545" fill="#f8fafc" rx="12"/>
+  <text x="410" y="34" text-anchor="middle" font-size="18" font-weight="700" fill="#0f172a">Pod Creation — kubelet / CRI / CNI Call Sequence</text>
+
+  <!-- Lane headers -->
+  <rect x="30" y="52" width="140" height="36" rx="8" fill="#ffffff" stroke="#8e44ad" stroke-width="1.5" filter="url(#s)"/>
+  <text x="100" y="75" text-anchor="middle" font-size="12" font-weight="700" fill="#8e44ad">API Server</text>
+
+  <rect x="220" y="52" width="150" height="36" rx="8" fill="#ffffff" stroke="#2980b9" stroke-width="1.5" filter="url(#s)"/>
+  <text x="295" y="75" text-anchor="middle" font-size="12" font-weight="700" fill="#2980b9">kubelet</text>
+
+  <rect x="415" y="52" width="170" height="36" rx="8" fill="#ffffff" stroke="#27ae60" stroke-width="1.5" filter="url(#s)"/>
+  <text x="500" y="75" text-anchor="middle" font-size="12" font-weight="700" fill="#27ae60">Container Runtime</text>
+
+  <rect x="630" y="52" width="160" height="36" rx="8" fill="#ffffff" stroke="#f39c12" stroke-width="1.5" filter="url(#s)"/>
+  <text x="710" y="75" text-anchor="middle" font-size="12" font-weight="700" fill="#f39c12">CNI Plugin</text>
+
+  <!-- Lifelines -->
+  <line x1="100" y1="92" x2="100" y2="524" stroke="#8e44ad" stroke-width="1.5" stroke-dasharray="4,5" opacity="0.5"/>
+  <line x1="295" y1="92" x2="295" y2="524" stroke="#2980b9" stroke-width="1.5" stroke-dasharray="4,5" opacity="0.5"/>
+  <line x1="500" y1="92" x2="500" y2="524" stroke="#27ae60" stroke-width="1.5" stroke-dasharray="4,5" opacity="0.5"/>
+  <line x1="710" y1="92" x2="710" y2="524" stroke="#f39c12" stroke-width="1.5" stroke-dasharray="4,5" opacity="0.5"/>
+
+  <!-- 1 -->
+  <text x="197" y="119" text-anchor="middle" font-size="11.5" font-weight="600" fill="#0f172a">① Pod 바인딩 감지 (watch)</text>
+  <line x1="100" y1="130" x2="285" y2="130" stroke="#2980b9" stroke-width="2" marker-end="url(#a)"/>
+
+  <!-- 2 -->
+  <text x="397" y="164" text-anchor="middle" font-size="11.5" font-weight="600" fill="#0f172a">② RunPodSandbox (CRI)</text>
+  <line x1="295" y1="175" x2="490" y2="175" stroke="#2980b9" stroke-width="2" marker-end="url(#a)"/>
+
+  <!-- 3 self -->
+  <rect x="415" y="192" width="172" height="48" rx="8" fill="#eaf7ee" stroke="#27ae60" stroke-width="1.5" filter="url(#s)"/>
+  <text x="501" y="211" text-anchor="middle" font-size="11.5" font-weight="600" fill="#0f172a">③ netns 생성</text>
+  <text x="501" y="229" text-anchor="middle" font-size="11" fill="#27ae60">pause 컨테이너</text>
+
+  <!-- 4 -->
+  <text x="604" y="272" text-anchor="middle" font-size="11.5" font-weight="600" fill="#0f172a">④ exec ADD</text>
+  <line x1="500" y1="283" x2="700" y2="283" stroke="#2980b9" stroke-width="2" marker-end="url(#a)"/>
+  <text x="604" y="299" text-anchor="middle" font-size="10.5" fill="#64748b">env + stdin JSON</text>
+
+  <!-- 5 self -->
+  <rect x="622" y="312" width="168" height="48" rx="8" fill="#fdf3e3" stroke="#f39c12" stroke-width="1.5" filter="url(#s)"/>
+  <text x="706" y="331" text-anchor="middle" font-size="11.5" font-weight="600" fill="#0f172a">⑤ veth · IP · route</text>
+  <text x="706" y="349" text-anchor="middle" font-size="11" fill="#f39c12">netns 안에 구성</text>
+
+  <!-- 6 -->
+  <text x="604" y="388" text-anchor="middle" font-size="11.5" font-weight="600" fill="#0f172a">⑥ Result { ips, routes }</text>
+  <line x1="710" y1="399" x2="510" y2="399" stroke="#94a3b8" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#ad)"/>
+
+  <!-- 7 -->
+  <text x="397" y="428" text-anchor="middle" font-size="11.5" font-weight="600" fill="#0f172a">⑦ sandbox ready + IP</text>
+  <line x1="500" y1="439" x2="305" y2="439" stroke="#94a3b8" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#ad)"/>
+
+  <!-- 8 -->
+  <text x="397" y="468" text-anchor="middle" font-size="11.5" font-weight="600" fill="#0f172a">⑧ CreateContainer / StartContainer</text>
+  <line x1="295" y1="479" x2="490" y2="479" stroke="#2980b9" stroke-width="2" marker-end="url(#a)"/>
+
+  <!-- 9 -->
+  <text x="197" y="512" text-anchor="middle" font-size="11.5" font-weight="600" fill="#0f172a">⑨ status.podIP</text>
+  <line x1="295" y1="523" x2="110" y2="523" stroke="#94a3b8" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#ad)"/>
+</svg>
