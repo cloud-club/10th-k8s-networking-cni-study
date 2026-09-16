@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 480" font-family="'Inter', 'Segoe UI', -apple-system, sans-serif">
+  <defs>
+    <filter id="s"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.12"/></filter>
+    <marker id="a" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#2980b9"/></marker>
+    <marker id="ag" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#27ae60"/></marker>
+    <marker id="ao" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#f39c12"/></marker>
+    <marker id="ap" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#8e44ad"/></marker>
+  </defs>
+  <rect width="820" height="480" fill="#f8fafc" rx="12"/>
+  <text x="410" y="34" text-anchor="middle" font-size="18" font-weight="700" fill="#0f172a">Cilium — 실행 파일은 에이전트를 부르는 클라이언트, 판단은 eBPF 맵 안에</text>
+
+  <!-- Datastore -->
+  <rect x="215" y="56" width="390" height="50" rx="8" fill="#f3ecf8" stroke="#8e44ad" stroke-width="2" filter="url(#s)"/>
+  <text x="410" y="77" text-anchor="middle" font-size="12.5" font-weight="700" fill="#0f172a">Kubernetes API — Cilium CRD (또는 etcd kvstore)</text>
+  <text x="410" y="95" text-anchor="middle" font-size="9" fill="#64748b" font-family="monospace">CiliumNode · CiliumEndpoint · CiliumIdentity · CiliumNetworkPolicy</text>
+  <!-- operator -->
+  <rect x="627" y="56" width="165" height="50" rx="8" fill="#ffffff" stroke="#8e44ad" stroke-width="1.5" stroke-dasharray="5 3" filter="url(#s)"/>
+  <text x="709" y="77" text-anchor="middle" font-size="11.5" font-weight="700" fill="#0f172a">cilium-operator</text>
+  <text x="709" y="95" text-anchor="middle" font-size="9.5" fill="#64748b">노드별 podCIDR 배정 · GC</text>
+  <line x1="627" y1="81" x2="607" y2="81" stroke="#8e44ad" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#ap)"/>
+  <!-- hubble -->
+  <rect x="28" y="56" width="165" height="50" rx="8" fill="#ffffff" stroke="#8e44ad" stroke-width="1.5" stroke-dasharray="5 3" filter="url(#s)"/>
+  <text x="110" y="77" text-anchor="middle" font-size="11.5" font-weight="700" fill="#0f172a">Hubble (선택)</text>
+  <text x="110" y="95" text-anchor="middle" font-size="9.5" fill="#64748b">에이전트의 플로우를 모아 관측</text>
+
+  <!-- Node -->
+  <rect x="28" y="130" width="764" height="330" rx="10" fill="#ffffff" stroke="#94a3b8" stroke-width="1.5" filter="url(#s)"/>
+  <text x="44" y="152" font-size="12" font-weight="700" fill="#64748b">Node</text>
+
+  <!-- agent -->
+  <rect x="48" y="168" width="400" height="130" rx="8" fill="#fdf3e3" stroke="#f39c12" stroke-width="2"/>
+  <text x="248" y="188" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a">cilium-agent (DaemonSet) — 여기가 두껍다</text>
+  <text x="62" y="210" font-size="10.5" fill="#0f172a">① Pod·Policy·Node를 watch, 라벨 집합 → 숫자 <tspan font-weight="700">Identity</tspan> 로 환원</text>
+  <text x="62" y="228" font-size="10.5" fill="#0f172a">② eBPF 프로그램을 컴파일해 veth의 tc 훅과 물리 NIC에 attach</text>
+  <text x="62" y="246" font-size="10.5" fill="#0f172a">③ eBPF 맵 갱신 — ipcache(IP→Identity), policy, ct, lb, tunnel</text>
+  <text x="62" y="264" font-size="10.5" fill="#0f172a">④ IPAM — 오퍼레이터가 준 노드 풀에서 직접 IP를 고른다</text>
+  <text x="62" y="282" font-size="10" fill="#64748b">Unix socket <tspan font-family="monospace">/var/run/cilium/cilium.sock</tspan> 으로 API 제공</text>
+  <line x1="248" y1="168" x2="330" y2="108" stroke="#8e44ad" stroke-width="2" marker-end="url(#ap)"/>
+  <text x="270" y="132" font-size="10" font-weight="700" fill="#8e44ad">watch / write</text>
+
+  <!-- CNI binary -->
+  <rect x="500" y="168" width="270" height="130" rx="8" fill="#eaf7ee" stroke="#27ae60" stroke-width="2"/>
+  <text x="635" y="188" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a">cilium-cni 실행 파일</text>
+  <text x="514" y="210" font-size="10.5" fill="#0f172a">veth 쌍 생성 — 호스트 쪽 <tspan font-family="monospace">lxc&lt;hash&gt;</tspan></text>
+  <text x="514" y="228" font-size="10.5" fill="#0f172a">그리고 에이전트에 <tspan font-weight="700">"Endpoint 하나 만들어줘"</tspan></text>
+  <text x="514" y="246" font-size="10.5" fill="#0f172a">IP 선택·라우트·eBPF attach는 전부 에이전트 몫</text>
+  <text x="514" y="264" font-size="10.5" fill="#0f172a">에이전트가 죽어 있으면 ADD 자체가 실패</text>
+  <text x="514" y="282" font-size="10" fill="#64748b">가장 얇은 실행 파일</text>
+  <line x1="500" y1="240" x2="448" y2="240" stroke="#27ae60" stroke-width="2" marker-end="url(#ag)"/>
+  <text x="474" y="232" text-anchor="middle" font-size="9.5" font-weight="700" fill="#27ae60">socket</text>
+
+  <!-- Kernel -->
+  <rect x="48" y="316" width="722" height="130" rx="8" fill="#e8f4f8" stroke="#2980b9" stroke-width="2"/>
+  <text x="62" y="337" font-size="12" font-weight="700" fill="#0f172a">커널에 남는 것 — 판단이 훅에 붙은 프로그램과 맵으로 이동</text>
+  <rect x="62" y="352" width="76" height="30" rx="5" fill="#ffffff" stroke="#27ae60" stroke-width="1.2"/>
+  <text x="100" y="371" text-anchor="middle" font-size="10" fill="#0f172a">Pod eth0</text>
+  <rect x="62" y="392" width="76" height="30" rx="5" fill="#ffffff" stroke="#27ae60" stroke-width="1.2"/>
+  <text x="100" y="411" text-anchor="middle" font-size="10" fill="#0f172a">Pod eth0</text>
+  <rect x="176" y="352" width="110" height="30" rx="5" fill="#ffffff" stroke="#2980b9" stroke-width="1.2"/>
+  <text x="231" y="371" text-anchor="middle" font-size="9.5" fill="#0f172a" font-family="monospace">lxc1a2b [tc eBPF]</text>
+  <rect x="176" y="392" width="110" height="30" rx="5" fill="#ffffff" stroke="#2980b9" stroke-width="1.2"/>
+  <text x="231" y="411" text-anchor="middle" font-size="9.5" fill="#0f172a" font-family="monospace">lxc4d5e [tc eBPF]</text>
+  <line x1="138" y1="367" x2="176" y2="367" stroke="#27ae60" stroke-width="1.5"/>
+  <line x1="138" y1="407" x2="176" y2="407" stroke="#27ae60" stroke-width="1.5"/>
+  <rect x="320" y="360" width="124" height="56" rx="5" fill="#ffffff" stroke="#c0392b" stroke-width="1.5"/>
+  <text x="382" y="378" text-anchor="middle" font-size="10.5" font-weight="700" fill="#0f172a">eBPF maps</text>
+  <text x="382" y="392" text-anchor="middle" font-size="9.5" fill="#64748b">ipcache · policy · ct · lb</text>
+  <text x="382" y="406" text-anchor="middle" font-size="9" fill="#64748b">조회 = 해시, 규칙 수와 무관</text>
+  <line x1="286" y1="367" x2="320" y2="380" stroke="#2980b9" stroke-width="1.5" marker-end="url(#a)"/>
+  <line x1="286" y1="407" x2="320" y2="396" stroke="#2980b9" stroke-width="1.5" marker-end="url(#a)"/>
+  <rect x="474" y="360" width="100" height="56" rx="5" fill="#ffffff" stroke="#2980b9" stroke-width="1.5"/>
+  <text x="524" y="378" text-anchor="middle" font-size="10.5" font-weight="700" fill="#0f172a">eth0 [tc/XDP]</text>
+  <text x="524" y="392" text-anchor="middle" font-size="9.5" fill="#64748b">or cilium_vxlan</text>
+  <text x="524" y="406" text-anchor="middle" font-size="9.5" fill="#64748b">cilium_host/net</text>
+  <line x1="444" y1="388" x2="474" y2="388" stroke="#2980b9" stroke-width="1.5" marker-end="url(#a)"/>
+  <text x="588" y="360" font-size="9.5" fill="#f39c12" font-weight="700">에이전트가 심은 것</text>
+  <text x="586" y="375" font-size="8.5" fill="#0f172a" font-family="monospace">ipcache 10.42.1.7 → id 3421 @node-2</text>
+  <text x="586" y="390" font-size="8.5" fill="#0f172a" font-family="monospace">policy  1234 → 3421 :8080 allow</text>
+  <text x="586" y="405" font-size="8.5" fill="#0f172a" font-family="monospace">lb      10.96.0.10:80 → backends</text>
+  <text x="588" y="424" font-size="9.5" fill="#64748b">kube-proxy 없이도 Service가 된다</text>
+  <text x="588" y="438" font-size="9.5" fill="#64748b">iptables 체인은 거의 비어 있다</text>
+</svg>

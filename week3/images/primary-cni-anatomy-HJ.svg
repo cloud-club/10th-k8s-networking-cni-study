@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 500" font-family="'Inter', 'Segoe UI', -apple-system, sans-serif">
+  <defs>
+    <filter id="s">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.12"/>
+    </filter>
+    <marker id="a" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#2980b9"/>
+    </marker>
+    <marker id="ag" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#27ae60"/>
+    </marker>
+    <marker id="ao" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#f39c12"/>
+    </marker>
+    <marker id="ap" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#8e44ad"/>
+    </marker>
+  </defs>
+
+  <rect width="820" height="500" fill="#f8fafc" rx="12"/>
+  <text x="410" y="34" text-anchor="middle" font-size="18" font-weight="700" fill="#0f172a">Primary CNI의 공통 해부도 — 실행 파일 + 데몬 + 데이터스토어</text>
+
+  <!-- Control plane / datastore -->
+  <rect x="260" y="60" width="300" height="64" rx="8" fill="#f3ecf8" stroke="#8e44ad" stroke-width="2" filter="url(#s)"/>
+  <text x="410" y="84" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a">데이터스토어</text>
+  <text x="410" y="102" text-anchor="middle" font-size="10.5" fill="#64748b">kube-apiserver (Node, Pod, CRD) 또는 etcd</text>
+  <text x="410" y="116" text-anchor="middle" font-size="10.5" fill="#8e44ad">클러스터 전체의 "누가 어느 대역인가"</text>
+
+  <!-- Operator (optional) -->
+  <rect x="600" y="66" width="190" height="52" rx="8" fill="#ffffff" stroke="#8e44ad" stroke-width="1.5" stroke-dasharray="5 3" filter="url(#s)"/>
+  <text x="695" y="88" text-anchor="middle" font-size="12" font-weight="700" fill="#0f172a">Operator / Controller</text>
+  <text x="695" y="106" text-anchor="middle" font-size="10" fill="#64748b">IP 풀 배정, GC, 노드 삭제 시 회수 (선택)</text>
+  <line x1="600" y1="92" x2="562" y2="92" stroke="#8e44ad" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#ap)"/>
+
+  <!-- Node box -->
+  <rect x="28" y="160" width="764" height="316" rx="10" fill="#ffffff" stroke="#94a3b8" stroke-width="1.5" filter="url(#s)"/>
+  <text x="44" y="184" font-size="12.5" font-weight="700" fill="#64748b">Node (모든 노드에 동일하게 반복)</text>
+
+  <!-- Daemon -->
+  <rect x="48" y="200" width="330" height="120" rx="8" fill="#fdf3e3" stroke="#f39c12" stroke-width="2"/>
+  <text x="213" y="222" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a">데몬 (DaemonSet Pod, hostNetwork)</text>
+  <text x="213" y="238" text-anchor="middle" font-size="10.5" fill="#f39c12">flanneld · calico-node · cilium-agent</text>
+  <text x="62" y="262" font-size="10.5" fill="#0f172a">① API 서버를 watch — Node, Pod, Policy</text>
+  <text x="62" y="280" font-size="10.5" fill="#0f172a">② 호스트 커널에 프로그래밍 — 라우트·FDB·iptables·eBPF</text>
+  <text x="62" y="298" font-size="10.5" fill="#0f172a">③ /etc/cni/net.d 에 설정 파일을 써서 실행 파일을 "등록"</text>
+  <text x="62" y="314" font-size="10" fill="#64748b">Pod가 하나도 없어도 항상 돌고 있다</text>
+
+  <!-- watch arrow -->
+  <line x1="213" y1="200" x2="330" y2="126" stroke="#8e44ad" stroke-width="2" marker-end="url(#ap)"/>
+  <text x="200" y="150" font-size="10.5" font-weight="700" fill="#8e44ad">watch / write</text>
+
+  <!-- Binary -->
+  <rect x="440" y="200" width="330" height="120" rx="8" fill="#eaf7ee" stroke="#27ae60" stroke-width="2"/>
+  <text x="605" y="222" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a">CNI 실행 파일 (/opt/cni/bin)</text>
+  <text x="605" y="238" text-anchor="middle" font-size="10.5" fill="#27ae60">flannel · calico + calico-ipam · cilium-cni</text>
+  <text x="454" y="262" font-size="10.5" fill="#0f172a">런타임이 Pod 생성마다 ADD로 exec</text>
+  <text x="454" y="280" font-size="10.5" fill="#0f172a">veth · IP · Pod 안 라우트 — 그 Pod 몫만 처리</text>
+  <text x="454" y="298" font-size="10.5" fill="#0f172a">끝나면 프로세스 종료. 상태는 데몬/파일에 위탁</text>
+  <text x="454" y="314" font-size="10" fill="#64748b">두께는 구현체마다 다르다 (아래 본문)</text>
+
+  <!-- daemon -> binary registration -->
+  <line x1="378" y1="260" x2="440" y2="260" stroke="#f39c12" stroke-width="2" marker-end="url(#ao)"/>
+  <text x="409" y="252" text-anchor="middle" font-size="9.5" font-weight="700" fill="#f39c12">conf 기록</text>
+  <text x="409" y="276" text-anchor="middle" font-size="9.5" fill="#64748b">socket / 파일</text>
+
+  <!-- Runtime -->
+  <rect x="640" y="340" width="130" height="44" rx="8" fill="#ffffff" stroke="#2980b9" stroke-width="1.5"/>
+  <text x="705" y="358" text-anchor="middle" font-size="11.5" font-weight="700" fill="#0f172a">containerd / CRI-O</text>
+  <text x="705" y="374" text-anchor="middle" font-size="10" fill="#64748b">Pod 생성 시 exec</text>
+  <line x1="705" y1="340" x2="705" y2="322" stroke="#2980b9" stroke-width="2" marker-end="url(#a)"/>
+
+  <!-- Kernel -->
+  <rect x="48" y="400" width="722" height="60" rx="8" fill="#e8f4f8" stroke="#2980b9" stroke-width="2"/>
+  <text x="62" y="422" font-size="12.5" font-weight="700" fill="#0f172a">Linux 커널</text>
+  <text x="62" y="442" font-size="10.5" fill="#0f172a" font-family="monospace">netns · veth · bridge · route table · FDB · netfilter/iptables · tc/XDP eBPF · vxlan/ipip</text>
+  <text x="760" y="422" text-anchor="end" font-size="10.5" fill="#64748b">Week 1의 재료가 전부 여기</text>
+
+  <!-- daemon -> kernel, binary -> kernel -->
+  <line x1="150" y1="320" x2="150" y2="398" stroke="#f39c12" stroke-width="2" marker-end="url(#ao)"/>
+  <text x="158" y="362" font-size="10" fill="#f39c12">노드 전체 규칙</text>
+  <line x1="520" y1="320" x2="520" y2="398" stroke="#27ae60" stroke-width="2" marker-end="url(#ag)"/>
+  <text x="528" y="362" font-size="10" fill="#27ae60">Pod 하나 몫</text>
+</svg>

@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 460" font-family="'Inter', 'Segoe UI', -apple-system, sans-serif">
+  <defs>
+    <filter id="s"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.12"/></filter>
+    <marker id="a" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#2980b9"/></marker>
+    <marker id="ag" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#27ae60"/></marker>
+    <marker id="ao" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#f39c12"/></marker>
+    <marker id="ap" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#8e44ad"/></marker>
+  </defs>
+  <rect width="820" height="460" fill="#f8fafc" rx="12"/>
+  <text x="410" y="34" text-anchor="middle" font-size="18" font-weight="700" fill="#0f172a">Flannel — 데몬은 노드 대역만 알리고, 실행 파일은 bridge에 위임한다</text>
+
+  <!-- API server -->
+  <rect x="230" y="56" width="360" height="50" rx="8" fill="#f3ecf8" stroke="#8e44ad" stroke-width="2" filter="url(#s)"/>
+  <text x="410" y="77" text-anchor="middle" font-size="12.5" font-weight="700" fill="#0f172a">kube-apiserver — Node 오브젝트</text>
+  <text x="410" y="95" text-anchor="middle" font-size="10" fill="#64748b" font-family="monospace">spec.podCIDR · annotations: public-ip, backend-data{VtepMAC}</text>
+
+  <!-- Node -->
+  <rect x="28" y="130" width="764" height="310" rx="10" fill="#ffffff" stroke="#94a3b8" stroke-width="1.5" filter="url(#s)"/>
+  <text x="44" y="152" font-size="12" font-weight="700" fill="#64748b">Node</text>
+
+  <!-- flanneld -->
+  <rect x="48" y="168" width="300" height="118" rx="8" fill="#fdf3e3" stroke="#f39c12" stroke-width="2"/>
+  <text x="198" y="190" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a">flanneld (DaemonSet)</text>
+  <text x="62" y="212" font-size="10.5" fill="#0f172a">① 내 podCIDR 읽어 <tspan font-family="monospace">/run/flannel/subnet.env</tspan> 기록</text>
+  <text x="62" y="230" font-size="10.5" fill="#0f172a">② 내 VTEP MAC·노드 IP를 Node annotation에 게시</text>
+  <text x="62" y="248" font-size="10.5" fill="#0f172a">③ 다른 노드 annotation을 watch → 커널에</text>
+  <text x="76" y="264" font-size="10" fill="#64748b" font-family="monospace">route + ARP + FDB (노드 하나당 세 줄)</text>
+  <text x="62" y="280" font-size="10" fill="#64748b">라우팅 프로토콜 없음. 정적 등록의 반복</text>
+  <line x1="198" y1="168" x2="330" y2="108" stroke="#8e44ad" stroke-width="2" marker-end="url(#ap)"/>
+  <text x="196" y="126" font-size="10" font-weight="700" fill="#8e44ad">watch / annotate</text>
+
+  <!-- CNI binary -->
+  <rect x="440" y="168" width="330" height="118" rx="8" fill="#eaf7ee" stroke="#27ae60" stroke-width="2"/>
+  <text x="605" y="190" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a">flannel CNI 실행 파일</text>
+  <text x="454" y="212" font-size="10.5" fill="#0f172a">subnet.env를 읽어 설정을 조립한 뒤</text>
+  <text x="454" y="230" font-size="10.5" fill="#0f172a"><tspan font-weight="700">bridge</tspan> 플러그인 + <tspan font-weight="700">host-local</tspan> IPAM에 그대로 위임</text>
+  <text x="454" y="252" font-size="9.5" fill="#64748b" font-family="monospace">{"type":"bridge","bridge":"cni0","isGateway":true,</text>
+  <text x="454" y="266" font-size="9.5" fill="#64748b" font-family="monospace">"ipam":{"type":"host-local","subnet":"10.42.1.0/24"}}</text>
+  <text x="454" y="280" font-size="10" fill="#64748b">자기 코드는 거의 없다 — 접착제</text>
+  <line x1="348" y1="220" x2="440" y2="220" stroke="#f39c12" stroke-width="2" marker-end="url(#ao)"/>
+  <text x="394" y="212" text-anchor="middle" font-size="9.5" font-weight="700" fill="#f39c12">subnet.env</text>
+
+  <!-- Kernel view -->
+  <rect x="48" y="304" width="722" height="122" rx="8" fill="#e8f4f8" stroke="#2980b9" stroke-width="2"/>
+  <text x="62" y="325" font-size="12" font-weight="700" fill="#0f172a">커널에 남는 것 (node-1, podCIDR 10.42.0.0/24 기준)</text>
+  <!-- pods & bridge -->
+  <rect x="62" y="340" width="70" height="30" rx="5" fill="#ffffff" stroke="#27ae60" stroke-width="1.2"/>
+  <text x="97" y="359" text-anchor="middle" font-size="10" fill="#0f172a">Pod eth0</text>
+  <rect x="62" y="378" width="70" height="30" rx="5" fill="#ffffff" stroke="#27ae60" stroke-width="1.2"/>
+  <text x="97" y="397" text-anchor="middle" font-size="10" fill="#0f172a">Pod eth0</text>
+  <rect x="160" y="352" width="84" height="44" rx="5" fill="#ffffff" stroke="#2980b9" stroke-width="1.5"/>
+  <text x="202" y="370" text-anchor="middle" font-size="10.5" font-weight="700" fill="#0f172a">cni0</text>
+  <text x="202" y="386" text-anchor="middle" font-size="9.5" fill="#64748b">10.42.0.1/24</text>
+  <line x1="132" y1="355" x2="160" y2="368" stroke="#27ae60" stroke-width="1.5"/>
+  <line x1="132" y1="393" x2="160" y2="380" stroke="#27ae60" stroke-width="1.5"/>
+  <rect x="278" y="352" width="104" height="44" rx="5" fill="#ffffff" stroke="#f39c12" stroke-width="1.5"/>
+  <text x="330" y="370" text-anchor="middle" font-size="10.5" font-weight="700" fill="#0f172a">flannel.1</text>
+  <text x="330" y="386" text-anchor="middle" font-size="9" fill="#64748b">VXLAN VTEP · MTU 1450</text>
+  <line x1="244" y1="374" x2="278" y2="374" stroke="#2980b9" stroke-width="1.5" marker-end="url(#a)"/>
+  <rect x="416" y="352" width="70" height="44" rx="5" fill="#ffffff" stroke="#2980b9" stroke-width="1.5"/>
+  <text x="451" y="370" text-anchor="middle" font-size="10.5" font-weight="700" fill="#0f172a">eth0</text>
+  <text x="451" y="386" text-anchor="middle" font-size="9.5" fill="#64748b">UDP 8472</text>
+  <line x1="382" y1="374" x2="416" y2="374" stroke="#f39c12" stroke-width="1.5" marker-end="url(#ao)"/>
+  <!-- routes -->
+  <text x="506" y="346" font-size="9.5" fill="#f39c12" font-weight="700">flanneld가 심은 줄 (node-2 몫)</text>
+  <text x="506" y="362" font-size="9" fill="#0f172a" font-family="monospace">10.42.1.0/24 via 10.42.1.0 dev flannel.1 onlink</text>
+  <text x="506" y="377" font-size="9" fill="#0f172a" font-family="monospace">neigh 10.42.1.0 lladdr &lt;VtepMAC&gt; PERMANENT</text>
+  <text x="506" y="392" font-size="9" fill="#0f172a" font-family="monospace">fdb &lt;VtepMAC&gt; dev flannel.1 dst 192.168.1.12</text>
+  <text x="506" y="412" font-size="9.5" fill="#64748b">NetworkPolicy 없음 — Canal = Flannel + Felix</text>
+</svg>

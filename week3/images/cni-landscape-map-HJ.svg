@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 520" font-family="'Inter', 'Segoe UI', -apple-system, sans-serif">
+  <defs>
+    <filter id="s"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.12"/></filter>
+    <marker id="ak" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#64748b"/></marker>
+  </defs>
+  <rect width="820" height="520" fill="#f8fafc" rx="12"/>
+  <text x="410" y="34" text-anchor="middle" font-size="18" font-weight="700" fill="#0f172a">Landscape — 두 개의 축으로 놓아 보기</text>
+  <text x="410" y="54" text-anchor="middle" font-size="11" fill="#64748b">가로: 다른 노드의 Pod까지 어떻게 가는가 · 세로: 노드 안에서 패킷을 누가 판단하는가</text>
+
+  <!-- grid -->
+  <rect x="150" y="80" width="600" height="360" rx="8" fill="#ffffff" stroke="#94a3b8" stroke-width="1.5" filter="url(#s)"/>
+  <line x1="450" y1="80" x2="450" y2="440" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="6 4"/>
+  <line x1="150" y1="200" x2="750" y2="200" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="6 4"/>
+  <line x1="150" y1="320" x2="750" y2="320" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="6 4"/>
+
+  <!-- x axis labels -->
+  <text x="300" y="466" text-anchor="middle" font-size="12.5" font-weight="700" fill="#f39c12">Overlay — 캡슐화</text>
+  <text x="300" y="482" text-anchor="middle" font-size="10" fill="#64748b">VXLAN · Geneve · IPIP · WireGuard</text>
+  <text x="300" y="496" text-anchor="middle" font-size="10" fill="#64748b">물리망은 Pod 대역을 모른다. MTU가 줄어든다</text>
+  <text x="600" y="466" text-anchor="middle" font-size="12.5" font-weight="700" fill="#2980b9">Native routing — 언더레이가 안다</text>
+  <text x="600" y="482" text-anchor="middle" font-size="10" fill="#64748b">호스트 라우트 · BGP · 클라우드 라우트 테이블</text>
+  <text x="600" y="496" text-anchor="middle" font-size="10" fill="#64748b">헤더 그대로, 대신 망에 조건이 붙는다</text>
+  <line x1="150" y1="452" x2="750" y2="452" stroke="#64748b" stroke-width="1.5" marker-end="url(#ak)"/>
+
+  <!-- y axis labels -->
+  <text x="140" y="140" text-anchor="end" font-size="11.5" font-weight="700" fill="#0f172a">bridge + iptables</text>
+  <text x="140" y="156" text-anchor="end" font-size="9.5" fill="#64748b">L2 스위치, netfilter</text>
+  <text x="140" y="260" text-anchor="end" font-size="11.5" font-weight="700" fill="#0f172a">L3 routes + iptables</text>
+  <text x="140" y="276" text-anchor="end" font-size="9.5" fill="#64748b">브릿지 없이 /32 라우트</text>
+  <text x="140" y="380" text-anchor="end" font-size="11.5" font-weight="700" fill="#0f172a">eBPF</text>
+  <text x="140" y="396" text-anchor="end" font-size="9.5" fill="#64748b">tc/XDP 훅 + 맵</text>
+
+  <!-- cells: row1 overlay/bridge -->
+  <rect x="170" y="100" width="260" height="80" rx="8" fill="#fdf3e3" stroke="#f39c12" stroke-width="1.5"/>
+  <text x="300" y="124" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a">Flannel (vxlan)</text>
+  <text x="300" y="142" text-anchor="middle" font-size="10" fill="#64748b">기본값. cni0 + flannel.1</text>
+  <text x="300" y="158" text-anchor="middle" font-size="10" fill="#64748b">가장 단순, 정책 없음</text>
+  <!-- row1 native/bridge -->
+  <rect x="470" y="100" width="260" height="80" rx="8" fill="#e8f4f8" stroke="#2980b9" stroke-width="1.5"/>
+  <text x="600" y="124" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a">Flannel (host-gw)</text>
+  <text x="600" y="142" text-anchor="middle" font-size="10" fill="#64748b">노드 IP를 next-hop으로 하는 라우트</text>
+  <text x="600" y="158" text-anchor="middle" font-size="10" fill="#64748b">노드들이 같은 L2에 있어야 함</text>
+  <!-- row2 overlay/L3 -->
+  <rect x="170" y="220" width="260" height="80" rx="8" fill="#fdf3e3" stroke="#f39c12" stroke-width="1.5"/>
+  <text x="300" y="244" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a">Calico (IPIP / VXLAN)</text>
+  <text x="300" y="262" text-anchor="middle" font-size="10" fill="#64748b">라우팅은 BGP/Felix, 노드 사이만 감쌈</text>
+  <text x="300" y="278" text-anchor="middle" font-size="10" fill="#64748b">CrossSubnet: 서브넷 넘을 때만 캡슐화</text>
+  <!-- row2 native/L3 -->
+  <rect x="470" y="220" width="260" height="80" rx="8" fill="#e8f4f8" stroke="#2980b9" stroke-width="1.5"/>
+  <text x="600" y="240" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a">Calico (BGP, 캡슐화 없음)</text>
+  <text x="600" y="257" text-anchor="middle" font-size="10" fill="#64748b">온프레미스의 정석. ToR와 피어링</text>
+  <text x="600" y="275" text-anchor="middle" font-size="12" font-weight="700" fill="#0f172a">AWS VPC CNI · Azure CNI</text>
+  <text x="600" y="291" text-anchor="middle" font-size="10" fill="#64748b">Pod IP가 VPC의 진짜 IP. 라우팅은 클라우드가</text>
+  <!-- row3 overlay/eBPF -->
+  <rect x="170" y="340" width="260" height="80" rx="8" fill="#fdf3e3" stroke="#f39c12" stroke-width="1.5"/>
+  <text x="300" y="364" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a">Cilium (tunnel)</text>
+  <text x="300" y="382" text-anchor="middle" font-size="10" fill="#64748b">기본값. VXLAN/Geneve, cilium_vxlan</text>
+  <text x="300" y="398" text-anchor="middle" font-size="10" fill="#64748b">망에 요구 없음. eBPF 위에서 캡슐화</text>
+  <!-- row3 native/eBPF -->
+  <rect x="470" y="340" width="260" height="80" rx="8" fill="#e8f4f8" stroke="#2980b9" stroke-width="1.5"/>
+  <text x="600" y="360" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a">Cilium (native routing)</text>
+  <text x="600" y="377" text-anchor="middle" font-size="10" fill="#64748b">autoDirectNodeRoutes · BGP CP · 클라우드 ENI</text>
+  <text x="600" y="395" text-anchor="middle" font-size="12" font-weight="700" fill="#0f172a">Calico eBPF dataplane</text>
+  <text x="600" y="411" text-anchor="middle" font-size="10" fill="#64748b">Felix가 iptables 대신 eBPF를 심는 모드</text>
+
+  <!-- footnote -->
+  <text x="410" y="514" text-anchor="middle" font-size="10" fill="#64748b">같은 제품이 두 칸에 걸쳐 있다 — "어떤 CNI"보다 "어떤 모드"가 실제 동작을 정한다</text>
+</svg>

@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 380" font-family="'Inter', 'Segoe UI', -apple-system, sans-serif">
+  <defs>
+    <filter id="s">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.12"/>
+    </filter>
+  </defs>
+
+  <rect width="820" height="380" fill="#f8fafc" rx="12"/>
+  <text x="410" y="34" text-anchor="middle" font-size="18" font-weight="700" fill="#0f172a">CNI 규격이 정한 것과 정하지 않은 것</text>
+
+  <!-- Left: spec covers -->
+  <rect x="28" y="62" width="360" height="300" rx="10" fill="#eaf7ee" stroke="#27ae60" stroke-width="2" filter="url(#s)"/>
+  <text x="208" y="90" text-anchor="middle" font-size="14" font-weight="700" fill="#27ae60">규격 안 — CNI 실행 파일이 하는 일</text>
+  <text x="208" y="108" text-anchor="middle" font-size="10.5" fill="#64748b">Pod 하나가 생길 때, 그 노드 안에서, 한 번 실행</text>
+
+  <rect x="48" y="126" width="320" height="42" rx="6" fill="#ffffff" stroke="#27ae60" stroke-width="1.2"/>
+  <text x="62" y="144" font-size="11.5" font-weight="700" fill="#0f172a">인터페이스 생성</text>
+  <text x="62" y="160" font-size="10.5" fill="#64748b">veth를 만들어 Pod 네임스페이스에 eth0로 넣는다</text>
+
+  <rect x="48" y="176" width="320" height="42" rx="6" fill="#ffffff" stroke="#27ae60" stroke-width="1.2"/>
+  <text x="62" y="194" font-size="11.5" font-weight="700" fill="#0f172a">IP 할당</text>
+  <text x="62" y="210" font-size="10.5" fill="#64748b">IPAM을 호출해 주소를 받아 인터페이스에 붙인다</text>
+
+  <rect x="48" y="226" width="320" height="42" rx="6" fill="#ffffff" stroke="#27ae60" stroke-width="1.2"/>
+  <text x="62" y="244" font-size="11.5" font-weight="700" fill="#0f172a">Pod 안 라우트</text>
+  <text x="62" y="260" font-size="10.5" fill="#64748b">default route를 게이트웨이로 건다</text>
+
+  <rect x="48" y="276" width="320" height="42" rx="6" fill="#ffffff" stroke="#27ae60" stroke-width="1.2"/>
+  <text x="62" y="294" font-size="11.5" font-weight="700" fill="#0f172a">Result 반환 / DEL 시 정리</text>
+  <text x="62" y="310" font-size="10.5" fill="#64748b">stdout JSON, 종료 코드, 역순 해제</text>
+
+  <text x="208" y="346" text-anchor="middle" font-size="10.5" font-style="italic" fill="#27ae60">→ 여기까지는 Week 2에서 본 그대로</text>
+
+  <!-- Right: spec doesn't cover -->
+  <rect x="432" y="62" width="360" height="300" rx="10" fill="#fdf3e3" stroke="#f39c12" stroke-width="2" filter="url(#s)"/>
+  <text x="612" y="90" text-anchor="middle" font-size="14" font-weight="700" fill="#f39c12">규격 밖 — 그런데 클러스터엔 필요한 일</text>
+  <text x="612" y="108" text-anchor="middle" font-size="10.5" fill="#64748b">노드 전체를, 계속, 지켜보며 해야 하는 일</text>
+
+  <rect x="452" y="126" width="320" height="42" rx="6" fill="#ffffff" stroke="#f39c12" stroke-width="1.2"/>
+  <text x="466" y="144" font-size="11.5" font-weight="700" fill="#0f172a">노드 사이 도달성</text>
+  <text x="466" y="160" font-size="10.5" fill="#64748b">다른 노드 podCIDR로 가는 경로 — 라우트, 터널, BGP</text>
+
+  <rect x="452" y="176" width="320" height="42" rx="6" fill="#ffffff" stroke="#f39c12" stroke-width="1.2"/>
+  <text x="466" y="194" font-size="11.5" font-weight="700" fill="#0f172a">NetworkPolicy</text>
+  <text x="466" y="210" font-size="10.5" fill="#64748b">규격은 정책이라는 개념 자체를 모른다</text>
+
+  <rect x="452" y="226" width="320" height="42" rx="6" fill="#ffffff" stroke="#f39c12" stroke-width="1.2"/>
+  <text x="466" y="244" font-size="11.5" font-weight="700" fill="#0f172a">노드 이탈·추가 대응</text>
+  <text x="466" y="260" font-size="10.5" fill="#64748b">노드가 늘거나 죽으면 경로와 IP 풀을 갱신</text>
+
+  <rect x="452" y="276" width="320" height="42" rx="6" fill="#ffffff" stroke="#f39c12" stroke-width="1.2"/>
+  <text x="466" y="294" font-size="11.5" font-weight="700" fill="#0f172a">Service 대체·암호화·관측</text>
+  <text x="466" y="310" font-size="10.5" fill="#64748b">kube-proxy replacement, WireGuard, 플로우 로그</text>
+
+  <text x="612" y="346" text-anchor="middle" font-size="10.5" font-style="italic" fill="#f39c12">→ 단발 실행 파일로는 불가능. 데몬이 필요하다</text>
+
+</svg>
