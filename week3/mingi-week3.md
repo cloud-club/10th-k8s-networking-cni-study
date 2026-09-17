@@ -182,8 +182,8 @@ net1  → SR-IOV 고성능 네트워크
 
 - 특징
     - **오버레이 네트워크(Overlay Network):** 기본적으로 **VXLAN** 방식을 사용하여 파드 간의 원래 패킷을 UDP 패킷으로 한 번 더 캡슐화하여 노드 간 통신을 수행 (MTU 감소, 성능 오버헤드)
-
-    <img width="800" alt="image" src="https://github.com/user-attachments/assets/c086fb9c-df7f-47b2-924c-f996e2574c3f" />
+ 
+    <img width="800" alt="image" src="https://github.com/user-attachments/assets/9288920f-a60c-4239-b9de-a0d8a7744fcb" />
     
     - **단순한 구조:** Pod-to-Pod 연결성에 집중해 이해와 설치가 비교적 쉬움
     - **IP 할당:** 각 노드에 고정된 서브넷(CIDR 대역)을 할당하여 노드 내 파드들이 고유한 IP를 가지도록 관리
@@ -204,7 +204,7 @@ net1  → SR-IOV 고성능 네트워크
     - **CIDR 범위:** `192.168.0.0/16`
 - 구성요소
 
-    <img width="800" alt="architecture-calico-deae813300e472483f84d6bfb49650ab" src="https://github.com/user-attachments/assets/8b2bd3ce-d331-4fc9-959a-185c71759eac" />
+    <img width="800" alt="image" src="https://github.com/user-attachments/assets/5a56a586-0f04-449c-b570-3b70fbc0839f" />
 
     - Felix (필릭스) : 인터페이스 관리, 라우팅 정보 관리, ACL 관리, 상태 체크
     - BIRD (버드): BGP Peer 에 라우팅 정보 전파 및 수신, BGP RR(Route Reflector)
@@ -228,7 +228,7 @@ net1  → SR-IOV 고성능 네트워크
 
 `eBPF` : 리눅스 커널에서 작은 사용자 정의 코드를 실행할 수 있게 해주는 기술
 
-<img width="773" height="275" alt="image 1" src="https://github.com/user-attachments/assets/f56c0126-fb47-46f4-a0b6-d718a13eb058" />
+<img width="773" height="275" alt="image" src="https://github.com/user-attachments/assets/43a3e5d4-7e88-4844-9c46-ae0382f35a99" />
 
 - 특징
     - **고성능 네트워킹**: 전통적인 `iptables` 방식의 오버헤드를 제거하고 커널 내에서 패킷을 직접 처리하여 네이티브 수준의 속도를 제공
