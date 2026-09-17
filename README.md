@@ -39,7 +39,7 @@ Kubernetes 네트워킹과 CNI의 동작을 이해하고, 실제로 어떻게 Po
 | Week 4 | Primary CNI | - Flannel Architecture / VXLAN<br>- Calico Architecture / Routing / BGP<br>- Overlay vs Underlay<br>- Pod-to-Pod Packet Flow 비교<br>- NetworkPolicy / IPAM |
 | Week 5 | Cilium & eBPF | - Cilium Architecture<br>- Cilium Datapath<br>- eBPF 기본 개념 및 Hook<br>- kube-proxy Replacement<br>- NetworkPolicy / Identity<br>- Hubble Overview |
 | Week 6 | Multi-Networking & Secondary Networking | - Multus Architecture / CNI Chaining<br>- Primary / Secondary Network<br>- NetworkAttachmentDefinition<br>- macvlan / ipvlan / SR-IOV<br>- Multi-NIC Pod 구성 및 Packet Flow |
-| Week 7 | Cloud Native Networking 비교 & Use Cases | - Flannel / Calico / Cilium 비교<br>- Multus 기반 Networking 구성 비교<br>- macvlan / ipvlan / SR-IOV 비교<br>- Routing / Overlay / eBPF / Hardware Networking 비교<br>- Kubernetes / CNF 등 Use Case 분석 |
+| Week 7 | Cloud Native Networking 비교 & Use Cases | - Primary CNI별 Datapath 및 Networking 방식 비교<br>- Multus 기반 Networking 구성 비교<br>- macvlan / ipvlan / SR-IOV 비교<br>- Routing / Overlay / eBPF / Hardware Networking 비교<br>- Kubernetes / CNF 등 Use Case 분석 |
 | Week 8 | Kubernetes Networking Common Issue Troubleshooting & Operations | - Pod-to-Pod / Pod-to-Service / External 통신 장애 분석<br>- CNI 장애 Troubleshooting<br>- IPAM / IP Pool 문제 분석<br>- Routing / NetworkPolicy / DNS / kube-proxy 문제 분석 |
 
 ## 기본 규칙

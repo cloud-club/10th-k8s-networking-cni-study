@@ -4,7 +4,7 @@
 
 ## 학습 포인트
 
-- Flannel / Calico / Cilium 비교
+- Primary CNI별 Networking Architecture / Datapath 비교 (Flannel, Calico, Cilium)
 - Multus 기반 Networking 구성 비교
 - macvlan / ipvlan / SR-IOV 비교
 - Routing / Overlay / eBPF / Hardware Networking 비교
