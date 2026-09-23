@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="utf-8"/><meta content="width=device-width,initial-scale=1" name="viewport"/><title>쿠버네티스 네트워크 · Flannel vs Calico</title><style>
+@import url('https://cdn.jsdelivr.net/gh/eunchurn/NanumSquareNeo@0.0.6/nanumsquareneo.css');
+:root{--bg:#060a10;--panel:#f5f7fb;--ink:#0f1724;--muted:#536275;--yellow:#ffdf3d;--orange:#ff7a00;--blue:#3385ff;--green:#13b87a;--red:#ff5d6c;--line:#dce5ef}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#000;font-family:'NanumSquareNeo','NanumSquare Neo','SUIT','Pretendard',sans-serif;color:#fff;-webkit-font-smoothing:antialiased}
+#viewport{width:1600px;height:900px;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:radial-gradient(circle at 84% 6%,rgba(255,223,61,.08),transparent 18%),linear-gradient(180deg,#080d14,#05080d);overflow:hidden}
+#prog{position:absolute;left:0;top:0;width:100%;height:5px;background:rgba(255,255,255,.06);z-index:5}
+#prog span{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--orange),var(--yellow));transition:width .3s ease}
+.slide{position:absolute;inset:0;display:none;overflow:hidden}.slide.active{display:block}
+.safe{position:absolute;inset:62px 104px 58px 104px;display:flex;flex-direction:column;gap:18px}
+.safe.center{justify-content:center;align-items:center;text-align:center}
+.top{flex:0 0 auto}
+.kicker{font-size:20px;font-weight:900;color:var(--yellow);margin-bottom:12px;display:flex;align-items:center;gap:10px}
+.kicker:before{content:'';display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--yellow)}
+h1,h2,h3,p{margin:0;word-break:keep-all;overflow-wrap:break-word}
+h1{font-size:82px;line-height:1.06;font-weight:900;letter-spacing:-.055em}
+h2{font-size:52px;line-height:1.13;font-weight:900;letter-spacing:-.05em}
+h2 span,h1 span{color:var(--yellow)}
+.body{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:16px}
+.page{position:absolute;top:20px;right:34px;font-size:11px;font-weight:900;color:#8fa2b9;letter-spacing:.06em}.cover .page{display:none}
+.point{width:1240px;max-width:100%;border-radius:18px;background:linear-gradient(90deg,#fff7ce,#fff);border:1px solid #ffe18c;color:#23334b;font-size:20px;line-height:1.45;font-weight:800;padding:14px 22px;text-align:center;box-shadow:0 10px 24px rgba(0,0,0,.14)}
+.point b{color:#b35400}
+.active .top{animation:drop .5s cubic-bezier(.2,.8,.2,1) both}.active .body>*{animation:rise .55s cubic-bezier(.2,.8,.2,1) both}.active .body>*:nth-child(2){animation-delay:.08s}.active .body>*:nth-child(3){animation-delay:.16s}
+@keyframes rise{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}@keyframes drop{from{opacity:0;transform:translateY(-14px)}to{opacity:1;transform:none}}
+/* cover */
+.cover p{font-size:26px;line-height:1.45;color:#d7e1ed;margin-top:26px}
+.speaker{display:inline-flex;margin-top:30px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.08);height:52px;align-items:center;padding:0 26px;border-radius:999px;font-size:20px;font-weight:900}
+/* diagrams */
+.svgfig{width:1380px;max-width:100%;height:auto;display:block}
+.svgfig text{font-family:inherit}
+.defline{width:1240px;display:flex;gap:14px;align-items:center;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:16px;padding:12px 20px;font-size:19px;font-weight:800;color:#e6edf5}
+.defline b{color:var(--yellow);white-space:nowrap}
+/* cards & rows */
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;width:1240px}
+.cards.four{grid-template-columns:repeat(4,1fr)}.cards.two{grid-template-columns:repeat(2,1fr)}
+.cards>div{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:24px;padding:24px 22px;text-align:center;box-shadow:0 12px 28px rgba(0,0,0,.12)}
+.cards em{font-style:normal;font-size:38px}.cards b{display:block;font-size:24px;margin-top:10px}
+.cards p{font-size:17px;line-height:1.5;color:var(--muted);font-weight:800;margin-top:10px}
+.cards code,.rows code,.tbl code,.defline code{font-family:'SF Mono',Menlo,monospace;font-size:.9em;background:#e9eef5;color:#1a2435;padding:1px 6px;border-radius:6px}
+.defline code{background:rgba(255,255,255,.12);color:#ffe98a}
+.rows{display:grid;gap:12px;width:1240px}
+.rows>div{background:var(--panel);color:var(--ink);border-radius:18px;padding:16px 24px;display:grid;grid-template-columns:44px 1fr;align-items:center;gap:16px}
+.rows i{font-style:normal;width:34px;height:34px;border-radius:50%;background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:900}
+.rows b{font-size:22px}.rows span{display:block;font-size:16px;color:var(--muted);font-weight:800;margin-top:3px}
+/* compare table */
+.tbl{width:1240px;border-collapse:separate;border-spacing:0;background:var(--panel);color:var(--ink);border-radius:22px;overflow:hidden;font-size:18px;font-weight:800}
+.tbl th{background:#111827;color:#fff;padding:14px 18px;font-size:19px;text-align:left}
+.tbl th.f{color:var(--yellow)}.tbl th.c{color:#8fc3ff}
+.tbl td{padding:12px 18px;border-top:1px solid var(--line);line-height:1.4;vertical-align:top}
+.tbl td:first-child{font-weight:900;width:200px;background:#eef3f8}
+.tbl .ok{color:#0b8a5a}.tbl .no{color:#c2303f}
+/* agenda */
+.agenda{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;width:1240px}
+.agenda>div{background:var(--panel);color:var(--ink);border-radius:24px;padding:24px 20px;min-height:170px;box-shadow:0 12px 28px rgba(0,0,0,.12)}
+.agenda small{display:inline-flex;height:28px;padding:0 12px;border-radius:999px;background:#111827;color:var(--yellow);align-items:center;font-weight:900;font-size:14px}
+.agenda b{display:block;font-size:24px;margin-top:12px}.agenda p{font-size:16px;color:var(--muted);font-weight:800;margin-top:8px;line-height:1.45}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:18px;width:1300px;align-items:start}
+.note{font-size:16px;color:#aab8c9;font-weight:800;text-align:center}
+</style></head><body><div id="viewport"><div id="prog"><span></span></div>
+
+<!-- 01 표지 -->
+<section class="slide cover active"><div class="safe center">
+  <div class="kicker">쿠버네티스 네트워크 · CNI 심화</div>
+  <h1>패킷은 Pod에서 Pod까지<br/><span>어떻게 도착하는가</span></h1>
+  <p>Flannel(VXLAN) vs Calico(BGP) · Overlay vs Underlay · IPAM · NetworkPolicy</p>
+</div></section>
+
+<!-- 02 순서 -->
+<section class="slide"><div class="safe"><header class="top"><div class="kicker">구성</div><h2>패킷 하나가 지나는 <span>7개 구간</span></h2></header><main class="body">
+  <div class="agenda">
+    <div><small>00 · 문제</small><b>K8s 네트워크 요구사항</b><p>Pod마다 IP, NAT 없이 통신.<br/>CNI가 이를 채우는 방식</p></div>
+    <div><small>01 · 시작점</small><b>Pod가 생길 때</b><p>kubelet → CNI 플러그인 →<br/>veth · IP · 라우팅</p></div>
+    <div><small>02 · 갈림길</small><b>Overlay vs Underlay</b><p>노드 사이를 터널로 건너는 방식과<br/>라우팅으로 건너는 방식</p></div>
+    <div><small>03 · 터널</small><b>Flannel · VXLAN</b><p>flanneld · flannel.1 · cni0<br/>캡슐화 패킷 흐름</p></div>
+    <div><small>04 · 라우팅</small><b>Calico · BGP</b><p>Felix · BIRD · Typha<br/>라우팅 테이블 전파 흐름</p></div>
+    <div><small>05 · 비교</small><b>Pod-to-Pod 흐름 비교</b><p>같은 패킷, 두 경로.<br/>홉·헤더·MTU·성능</p></div>
+    <div><small>06 · 제어</small><b>IPAM · NetworkPolicy</b><p>IP 할당 주체와<br/>차단이 일어나는 지점</p></div>
+    <div><small>07 · 선택</small><b>선택 기준</b><p>환경별 판단 기준과<br/>운영 체크포인트</p></div>
+  </div>
+</main></div></section>
+
+<!-- 03 K8s 네트워크 모델 -->
+<section class="slide"><div class="safe"><header class="top"><div class="kicker">00 · 문제 정의</div><h2>쿠버네티스는 네트워크에 <span>세 가지 약속</span>을 요구</h2></header><main class="body">
+  <div class="cards">
+    <div><em>🪪</em><b>모든 Pod는 고유 IP</b><p>컨테이너 포트 매핑 없음.<br/>Pod IP = 클러스터 안에서 유일</p></div>
+    <div><em>🔗</em><b>NAT 없이 Pod ↔ Pod</b><p>다른 노드의 Pod와도<br/>주소 변환 없이 직접 통신</p></div>
+    <div><em>🖥️</em><b>노드 ↔ Pod 도 직접</b><p>노드 데몬(kubelet 등)이<br/>NAT 없이 Pod에 도달</p></div>
+  </div>
+  <svg class="svgfig" viewBox="0 0 1300 320" role="img" aria-label="문제: 서로 다른 노드의 Pod가 어떻게 통신하나 — Pod 층과 물리망 층">
+    <!-- 약속: 논리적으로는 Pod ↔ Pod 직접 -->
+    <path d="M145 98 Q650 -30 1155 98" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="2" stroke-dasharray="6 6"/>
+    <text x="650" y="40" text-anchor="middle" font-size="14" font-weight="800" fill="rgba(255,255,255,.7)">약속 : Pod IP 그대로 · NAT 없이 직접 통신 (논리적 경로)</text>
+    <!-- Node A -->
+    <rect x="40" y="50" width="420" height="136" rx="20" fill="rgba(255,255,255,.05)" stroke="rgba(255,255,255,.2)" stroke-dasharray="7 6"/>
+    <text x="60" y="76" font-size="15" font-weight="900" fill="#ffdf3d">Node A</text>
+    <rect x="70" y="98" width="150" height="52" rx="14" fill="#f5f7fb"/><text x="145" y="122" text-anchor="middle" font-size="17" font-weight="900" fill="#111827">Pod A</text><text x="145" y="141" text-anchor="middle" font-size="13" fill="#536275">10.244.1.5</text>
+    <rect x="290" y="102" width="150" height="44" rx="10" fill="rgba(51,133,255,.18)" stroke="#3385ff"/><text x="365" y="120" text-anchor="middle" font-size="13" font-weight="900" fill="#8fb8ff">eth0</text><text x="365" y="137" text-anchor="middle" font-size="12" fill="#c9dcff">192.168.10.11</text>
+    <!-- Node B -->
+    <rect x="840" y="50" width="420" height="136" rx="20" fill="rgba(255,255,255,.05)" stroke="rgba(255,255,255,.2)" stroke-dasharray="7 6"/>
+    <text x="860" y="76" font-size="15" font-weight="900" fill="#ffdf3d">Node B</text>
+    <rect x="860" y="102" width="150" height="44" rx="10" fill="rgba(51,133,255,.18)" stroke="#3385ff"/><text x="935" y="120" text-anchor="middle" font-size="13" font-weight="900" fill="#8fb8ff">eth0</text><text x="935" y="137" text-anchor="middle" font-size="12" fill="#c9dcff">192.168.10.12</text>
+    <rect x="1080" y="98" width="150" height="52" rx="14" fill="#f5f7fb"/><text x="1155" y="122" text-anchor="middle" font-size="17" font-weight="900" fill="#111827">Pod B</text><text x="1155" y="141" text-anchor="middle" font-size="13" fill="#536275">10.244.2.8</text>
+    <!-- 물리망 층 -->
+    <rect x="40" y="214" width="1220" height="92" rx="18" fill="rgba(51,133,255,.10)" stroke="#3385ff" stroke-dasharray="7 6"/>
+    <text x="60" y="242" font-size="15" font-weight="900" fill="#8fb8ff">물리망 (Underlay) · 192.168.10.0/24</text>
+    <text x="60" y="264" font-size="12" fill="rgba(255,255,255,.7)">스위치·라우터의 테이블에는 노드 IP(192.168.x.x)만 있음</text>
+    <text x="60" y="282" font-size="12" fill="rgba(255,255,255,.7)">10.244.x.x 는 CNI가 만든 주소 → 물리망은 모름</text>
+    <rect x="560" y="236" width="180" height="52" rx="12" fill="#111827" stroke="#3385ff" stroke-width="2"/>
+    <text x="650" y="258" text-anchor="middle" font-size="14" font-weight="900" fill="#fff">L2 스위치 / 라우터</text>
+    <text x="650" y="276" text-anchor="middle" font-size="12" fill="#8fb8ff">192.168.10.1</text>
+    <text x="1240" y="256" text-anchor="end" font-size="14" font-weight="800" fill="#fff">이 구간을 어떻게 건너느냐</text>
+    <text x="1240" y="280" text-anchor="end" font-size="16" font-weight="900" fill="#ffdf3d">= Flannel / Calico 의 차이</text>
+    <!-- 실제 패킷 경로 -->
+    <path d="M220 124 H285" stroke="#ff7a00" stroke-width="4" stroke-linecap="round"/>
+    <path d="M365 148 V262 H552" fill="none" stroke="#ff7a00" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="14 10"/>
+    <path d="M550 253 l14 9 -14 9 z" fill="#ff7a00"/>
+    <path d="M740 262 H935 V158" fill="none" stroke="#ff7a00" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="14 10"/>
+    <path d="M926 162 l9 -14 9 14 z" fill="#ff7a00"/>
+    <path d="M1010 124 H1075" stroke="#ff7a00" stroke-width="4" stroke-linecap="round"/>
+    <rect x="392" y="188" width="150" height="30" rx="15" fill="#ff7a00"/>
+    <text x="467" y="208" text-anchor="middle" font-size="13" font-weight="900" fill="#fff">패킷 dst = 10.244.2.8</text>
+    <rect x="760" y="188" width="150" height="30" rx="15" fill="#ff5d6c"/>
+    <text x="835" y="208" text-anchor="middle" font-size="13" font-weight="900" fill="#fff">❓ 어느 노드로 보내지?</text>
+  </svg>
+  <div class="point" style="margin-top:18px">물리 스위치·라우터는 Pod IP(10.244.x.x)를 알지 못함. <b>노드 사이를 건너는 방법</b>이 Flannel과 Calico의 차이</div>
+</main></div></section>
+
+<!-- 04 Pod 생성 시 CNI 플로우 -->
+<section class="slide"><div class="safe"><header class="top"><div class="kicker">01 · 시작점</div><h2>Pod 하나가 뜰 때 <span>네트워크가 만들어지는 순서</span></h2></header><main class="body">
+  <svg class="svgfig" viewBox="0 0 1300 400" role="img" aria-label="Pod 생성 시 CNI 호출 흐름">
+    <!-- 왼쪽: 누가 (순서) -->
+    <text x="0" y="18" font-size="15" font-weight="900" fill="#ffdf3d">누가 · 순서대로</text>
+    <g font-weight="900">
+      <rect x="0" y="30" width="320" height="80" rx="16" fill="#f5f7fb"/>
+      <circle cx="28" cy="70" r="14" fill="#536275"/><text x="28" y="75" text-anchor="middle" font-size="15" fill="#fff">1</text>
+      <text x="54" y="63" font-size="19" fill="#111827">kubelet</text>
+      <text x="54" y="89" font-size="13" fill="#536275" font-weight="800">Pod 스케줄 받음 → 런타임에 "실행해" 요청</text>
+
+      <path d="M160 116 V138" stroke="#aab8c9" stroke-width="4" stroke-linecap="round"/><path d="M151 136 l9 14 9 -14 z" fill="#aab8c9"/>
+
+      <rect x="0" y="150" width="320" height="80" rx="16" fill="#f5f7fb"/>
+      <circle cx="28" cy="190" r="14" fill="#536275"/><text x="28" y="195" text-anchor="middle" font-size="15" fill="#fff">2</text>
+      <text x="54" y="183" font-size="19" fill="#111827">containerd (CRI)</text>
+      <text x="54" y="209" font-size="13" fill="#536275" font-weight="800">pause 컨테이너 + 빈 netns 만듦</text>
+
+      <path d="M160 236 V258" stroke="#aab8c9" stroke-width="4" stroke-linecap="round"/><path d="M151 256 l9 14 9 -14 z" fill="#aab8c9"/>
+
+      <rect x="0" y="270" width="320" height="100" rx="16" fill="#fff3d6" stroke="#ff7a00" stroke-width="2"/>
+      <circle cx="28" cy="320" r="14" fill="#ff7a00"/><text x="28" y="325" text-anchor="middle" font-size="15" fill="#fff">3</text>
+      <text x="54" y="307" font-size="19" fill="#111827">CNI 플러그인</text><text x="182" y="307" font-size="13" fill="#536275" font-weight="800">Flannel · Calico</text>
+      <text x="54" y="331" font-size="13" fill="#536275" font-weight="800">ADD 호출 · /etc/cni/net.d/*.conf 읽음</text>
+      <text x="54" y="354" font-size="13" fill="#ff7a00" font-weight="900">→ 오른쪽 주황 4 · 5 를 만든다</text>
+    </g>
+    <path d="M326 320 H388" stroke="#ff7a00" stroke-width="5" stroke-linecap="round"/><path d="M386 311 l20 9 -20 9 z" fill="#ff7a00"/>
+
+    <!-- 오른쪽: 노드 안에 만들어지는 것 -->
+    <rect x="380" y="30" width="920" height="360" rx="22" fill="rgba(255,255,255,.045)" stroke="rgba(255,255,255,.18)" stroke-width="1.5" stroke-dasharray="7 6"/>
+    <text x="404" y="18" font-size="15" font-weight="900" fill="#ffdf3d">노드 안 · 만들어지는 것 (Flannel · Calico 공통) — 번호 = 누가 만들었나</text>
+
+    <!-- Pod netns -->
+    <rect x="410" y="52" width="300" height="320" rx="16" fill="rgba(51,133,255,.14)" stroke="#3385ff" stroke-width="1.5"/>
+    <circle cx="436" cy="78" r="14" fill="#536275"/><text x="436" y="83" text-anchor="middle" font-size="15" font-weight="900" fill="#fff">2</text>
+    <text x="460" y="84" font-size="18" font-weight="900" fill="#fff">Pod netns</text>
+    <rect x="430" y="104" width="260" height="58" rx="12" fill="#f5f7fb"/>
+    <text x="560" y="128" text-anchor="middle" font-size="16" font-weight="900" fill="#111827">pause 컨테이너</text>
+    <text x="560" y="150" text-anchor="middle" font-size="13" font-weight="800" fill="#536275">netns를 붙잡고 있는 빈 껍데기</text>
+    <rect x="430" y="172" width="260" height="44" rx="12" fill="#f5f7fb" opacity=".55"/>
+    <text x="560" y="200" text-anchor="middle" font-size="14" font-weight="800" fill="#536275">앱 컨테이너 (같은 netns 공유)</text>
+    <rect x="430" y="256" width="260" height="100" rx="12" fill="#111827" stroke="#3385ff" stroke-width="1.5"/>
+    <circle cx="454" cy="282" r="14" fill="#ff7a00"/><text x="454" y="287" text-anchor="middle" font-size="15" font-weight="900" fill="#fff">5</text>
+    <text x="476" y="288" font-size="17" font-weight="900" fill="#fff">eth0</text>
+    <text x="448" y="316" font-size="13" font-weight="800" fill="#8fc3ff">IP 10.244.1.5/24 ← IPAM이 할당</text>
+    <text x="448" y="340" font-size="13" font-weight="800" fill="#8fc3ff">default via 10.244.1.1</text>
+
+    <!-- veth 쌍: 경계를 가로지름 -->
+    <path d="M690 306 H850" stroke="#3385ff" stroke-width="7" stroke-linecap="round"/>
+    <circle cx="742" cy="282" r="14" fill="#ff7a00"/><text x="742" y="287" text-anchor="middle" font-size="15" font-weight="900" fill="#fff">4</text>
+    <text x="762" y="287" font-size="14" font-weight="900" fill="#8fc3ff">veth 쌍</text>
+    <text x="770" y="332" text-anchor="middle" font-size="12" font-weight="800" fill="#aab8c9">양 끝이 다른 netns</text>
+
+    <!-- 호스트 netns -->
+    <rect x="850" y="52" width="420" height="320" rx="16" fill="rgba(255,255,255,.06)" stroke="rgba(255,255,255,.3)" stroke-width="1.5"/>
+    <text x="870" y="84" font-size="18" font-weight="900" fill="#fff">호스트 netns</text>
+    <rect x="870" y="104" width="380" height="120" rx="12" fill="#f5f7fb"/>
+    <circle cx="894" cy="130" r="14" fill="#ff7a00"/><text x="894" y="135" text-anchor="middle" font-size="15" font-weight="900" fill="#fff">5</text>
+    <text x="916" y="136" font-size="16" font-weight="900" fill="#111827">호스트 라우팅 테이블에 한 줄 추가</text>
+    <text x="886" y="166" font-size="12.5" font-weight="800" fill="#536275">Calico &nbsp;: 10.244.1.5 &nbsp;&nbsp;&nbsp;&nbsp;dev caliXXX &nbsp;(Pod마다 한 줄)</text>
+    <text x="886" y="188" font-size="12.5" font-weight="800" fill="#536275">Flannel : 10.244.1.0/24 dev cni0 &nbsp;&nbsp;&nbsp;&nbsp;(브리지가 대신)</text>
+    <text x="886" y="210" font-size="12.5" font-weight="800" fill="#536275">default : via 192.168.10.1 dev eth0</text>
+
+    <rect x="870" y="256" width="170" height="100" rx="12" fill="#f5f7fb"/>
+    <circle cx="894" cy="282" r="14" fill="#ff7a00"/><text x="894" y="287" text-anchor="middle" font-size="15" font-weight="900" fill="#fff">4</text>
+    <text x="916" y="288" font-size="16" font-weight="900" fill="#111827">veth 반대쪽</text>
+    <text x="882" y="316" font-size="12" font-weight="800" fill="#536275">Flannel: vethXXX → cni0</text>
+    <text x="882" y="340" font-size="12" font-weight="800" fill="#536275">Calico: caliXXX (브리지 없음)</text>
+
+    <path d="M1044 306 H1064" stroke="#ff7a00" stroke-width="5" stroke-linecap="round"/><path d="M1062 297 l18 9 -18 9 z" fill="#ff7a00"/>
+
+    <rect x="1080" y="256" width="170" height="100" rx="12" fill="#111827" stroke="#ffdf3d" stroke-width="1.5"/>
+    <text x="1165" y="290" text-anchor="middle" font-size="16" font-weight="900" fill="#fff">eth0 (노드 NIC)</text>
+    <text x="1165" y="314" text-anchor="middle" font-size="14" font-weight="800" fill="#ffdf3d">192.168.10.11</text>
+    <text x="1165" y="340" text-anchor="middle" font-size="12" font-weight="800" fill="#aab8c9">여기서부터 플러그인별 갈림</text>
+  </svg>
+  <div class="point">③~⑤가 CNI 플러그인의 일. <b>노드 안</b>까지는 두 플러그인이 비슷하고, <b>노드 밖으로 나가는 순간</b>부터 완전히 다름</div>
+</main></div></section>
+
+<!-- 05 Overlay vs Underlay -->
+<section class="slide"><div class="safe"><header class="top"><div class="kicker">02 · 갈림길</div><h2>노드 사이를 <span>터널로 건너는 방식과 라우팅으로 건너는 방식</span></h2></header><main class="body">
+  <svg class="svgfig" viewBox="0 0 1300 400" role="img" aria-label="Overlay와 Underlay 비교">
+    <defs><marker id="ar-w" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10z" fill="#aab8c9"/></marker></defs>
+
+    <!-- ===== Overlay ===== -->
+    <rect x="0" y="0" width="620" height="400" rx="24" fill="rgba(255,255,255,.045)" stroke="rgba(255,223,61,.5)" stroke-width="1.5"/>
+    <text x="310" y="40" text-anchor="middle" font-size="24" font-weight="900" fill="#ffdf3d">Overlay · 포장해서 보낸다</text>
+    <text x="310" y="64" text-anchor="middle" font-size="13" fill="#aab8c9">Flannel VXLAN · Calico IPIP</text>
+
+    <rect x="30" y="110" width="130" height="90" rx="14" fill="#f5f7fb"/>
+    <text x="95" y="146" text-anchor="middle" font-size="16" font-weight="900" fill="#111827">Pod A</text>
+    <text x="95" y="170" text-anchor="middle" font-size="12" fill="#536275">10.244.1.5</text>
+    <text x="95" y="222" text-anchor="middle" font-size="12" font-weight="800" fill="#aab8c9">Node 1 · 192.168.10.11</text>
+
+    <rect x="460" y="110" width="130" height="90" rx="14" fill="#f5f7fb"/>
+    <text x="525" y="146" text-anchor="middle" font-size="16" font-weight="900" fill="#111827">Pod B</text>
+    <text x="525" y="170" text-anchor="middle" font-size="12" fill="#536275">10.244.2.8</text>
+    <text x="525" y="222" text-anchor="middle" font-size="12" font-weight="800" fill="#aab8c9">Node 2 · 192.168.10.12</text>
+
+    <line x1="160" y1="155" x2="200" y2="155" stroke="#aab8c9" stroke-width="2" marker-end="url(#ar-w)"/>
+    <line x1="420" y1="155" x2="460" y2="155" stroke="#aab8c9" stroke-width="2" marker-end="url(#ar-w)"/>
+    <!-- packet: envelope + inner -->
+    <rect x="200" y="98" width="220" height="114" rx="12" fill="#ff7a00"/>
+    <text x="310" y="122" text-anchor="middle" font-size="13" font-weight="900" fill="#fff">봉투 · 노드 IP → 노드 IP</text>
+    <rect x="212" y="134" width="196" height="66" rx="8" fill="#3385ff"/>
+    <text x="310" y="163" text-anchor="middle" font-size="13" font-weight="900" fill="#fff">원본 · Pod IP → Pod IP</text>
+    <text x="310" y="186" text-anchor="middle" font-size="11" fill="#dbe9ff">봉투 안에 그대로</text>
+
+    <text x="310" y="272" text-anchor="middle" font-size="15" font-weight="800" fill="#e6edf5">망(스위치·라우터)은 <tspan fill="#ff7a00" font-weight="900">노드 IP만</tspan> 본다</text>
+    <text x="310" y="298" text-anchor="middle" font-size="13" fill="#aab8c9">Pod 경로를 망이 몰라도 됨</text>
+    <text x="310" y="344" text-anchor="middle" font-size="14" fill="#13b87a" font-weight="900">✓ 어떤 망에서도 그냥 동작</text>
+    <text x="310" y="372" text-anchor="middle" font-size="14" fill="#ff6b6b" font-weight="900">✗ 헤더 +50B → MTU 줄고, 포장 비용</text>
+
+    <!-- ===== VS ===== -->
+    <circle cx="650" cy="200" r="22" fill="#111827" stroke="rgba(255,255,255,.35)" stroke-width="1.5"/>
+    <text x="650" y="205" text-anchor="middle" font-size="14" font-weight="900" fill="#fff">VS</text>
+
+    <!-- ===== Underlay ===== -->
+    <rect x="680" y="0" width="620" height="400" rx="24" fill="rgba(255,255,255,.045)" stroke="rgba(51,133,255,.6)" stroke-width="1.5"/>
+    <text x="990" y="40" text-anchor="middle" font-size="24" font-weight="900" fill="#8fc3ff">Underlay · 그대로 보낸다</text>
+    <text x="990" y="64" text-anchor="middle" font-size="13" fill="#aab8c9">Calico BGP (Non-overlay)</text>
+
+    <rect x="710" y="110" width="130" height="90" rx="14" fill="#f5f7fb"/>
+    <text x="775" y="146" text-anchor="middle" font-size="16" font-weight="900" fill="#111827">Pod A</text>
+    <text x="775" y="170" text-anchor="middle" font-size="12" fill="#536275">10.244.1.5</text>
+    <text x="775" y="222" text-anchor="middle" font-size="12" font-weight="800" fill="#aab8c9">Node 1 · 192.168.10.11</text>
+
+    <rect x="1140" y="110" width="130" height="90" rx="14" fill="#f5f7fb"/>
+    <text x="1205" y="146" text-anchor="middle" font-size="16" font-weight="900" fill="#111827">Pod B</text>
+    <text x="1205" y="170" text-anchor="middle" font-size="12" fill="#536275">10.244.2.8</text>
+    <text x="1205" y="222" text-anchor="middle" font-size="12" font-weight="800" fill="#aab8c9">Node 2 · 192.168.10.12</text>
+
+    <line x1="840" y1="155" x2="880" y2="155" stroke="#aab8c9" stroke-width="2" marker-end="url(#ar-w)"/>
+    <line x1="1100" y1="155" x2="1140" y2="155" stroke="#aab8c9" stroke-width="2" marker-end="url(#ar-w)"/>
+    <!-- packet: inner only -->
+    <rect x="880" y="122" width="220" height="66" rx="12" fill="#3385ff"/>
+    <text x="990" y="151" text-anchor="middle" font-size="13" font-weight="900" fill="#fff">원본 · Pod IP → Pod IP</text>
+    <text x="990" y="174" text-anchor="middle" font-size="11" fill="#dbe9ff">봉투 없음</text>
+
+    <text x="990" y="272" text-anchor="middle" font-size="15" font-weight="800" fill="#e6edf5">망은 <tspan fill="#8fc3ff" font-weight="900">Pod IP를 그대로</tspan> 본다</text>
+    <text x="990" y="298" text-anchor="middle" font-size="13" fill="#aab8c9">그래서 Pod 경로를 망에 미리 알려둬야 함 (BGP)</text>
+    <text x="990" y="344" text-anchor="middle" font-size="14" fill="#13b87a" font-weight="900">✓ 헤더 없음 · 빠르고 디버깅 쉬움</text>
+    <text x="990" y="372" text-anchor="middle" font-size="14" fill="#ff6b6b" font-weight="900">✗ 망이 BGP를 받아줘야 함</text>
+  </svg>
+  <div class="point">Overlay는 <b>"망이 몰라도 되게"</b> 포장하고, Underlay는 <b>"망에게 알려주는"</b> 방식. 이 선택이 성능·MTU·운영 난이도를 전부 결정</div>
+</main></div></section>
+
+<!-- 06 Flannel 아키텍처 -->
+<section class="slide"><div class="safe"><header class="top"><div class="kicker">03 · 터널 · Flannel</div><h2>flanneld는 <span>주소록만 적고</span>, 패킷은 <span>장치 두 개</span>가 처리</h2></header><main class="body">
+  <svg class="svgfig" viewBox="0 0 1300 444" role="img" aria-label="Flannel 아키텍처 — 설정하는 쪽과 패킷이 지나는 길">
+    <defs>
+      <marker id="fl-y" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6 z" fill="#ffdf3d"/></marker>
+      <marker id="fl-o" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6 z" fill="#ff7a00"/></marker>
+    </defs>
+
+    <!-- 주소록 -->
+    <rect x="0" y="0" width="1300" height="62" rx="16" fill="#111827" stroke="#ffdf3d" stroke-width="1.5"/>
+    <text x="650" y="27" text-anchor="middle" font-size="18" font-weight="900" fill="#fff">kube-apiserver = 클러스터 주소록</text>
+    <text x="650" y="50" text-anchor="middle" font-size="13" fill="#ffdf3d" font-weight="800">"Node B(192.168.10.12)는 Pod 대역 10.244.2.0/24 를 갖고 있고, 터널 장치 MAC은 aa:bb:…" — 노드마다 한 줄씩</text>
+
+    <!-- Node A -->
+    <rect x="0" y="96" width="870" height="344" rx="22" fill="rgba(255,255,255,.045)" stroke="rgba(255,255,255,.2)" stroke-dasharray="7 6"/>
+    <text x="90" y="126" font-size="16" font-weight="900" fill="#ffdf3d">Node A · 192.168.10.11 · Pod 대역 10.244.1.0/24</text>
+
+    <!-- 왼쪽 레인: 설정 -->
+    <text x="240" y="156" text-anchor="middle" font-size="13" font-weight="900" fill="#ffdf3d">⚙ 설정하는 쪽 · 패킷은 안 만짐</text>
+    <path d="M50 168 V66" stroke="#ffdf3d" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#fl-y)"/>
+    <text x="58" y="157" font-size="11" font-weight="900" fill="#ffdf3d">주소록 감시</text>
+    <rect x="30" y="168" width="350" height="92" rx="12" fill="#fff3d6" stroke="#ff7a00" stroke-width="2"/>
+    <text x="205" y="196" text-anchor="middle" font-size="17" font-weight="900" fill="#111827">① flanneld  (노드마다 1개)</text>
+    <text x="205" y="220" text-anchor="middle" font-size="13" fill="#b35400" font-weight="900">"주소록 담당"</text>
+    <text x="205" y="243" text-anchor="middle" font-size="12" fill="#536275" font-weight="800">주소록을 보고 있다가 다른 노드 정보가 바뀌면 ↓</text>
+    <path d="M205 260 V292" stroke="#ff7a00" stroke-width="2" marker-end="url(#fl-o)"/>
+    <rect x="30" y="296" width="350" height="124" rx="12" fill="#f5f7fb"/>
+    <text x="205" y="322" text-anchor="middle" font-size="15" font-weight="900" fill="#111827">커널 테이블에 받아 적음</text>
+    <text x="48" y="348" font-size="12" fill="#111827" font-weight="800">• 라우팅 : 10.244.2.0/24 → flannel.1 로 보내</text>
+    <text x="48" y="368" font-size="12" fill="#111827" font-weight="800">• ARP·FDB : Node B 터널 MAC → 192.168.10.12</text>
+    <text x="48" y="388" font-size="12" fill="#111827" font-weight="800">• subnet.env : 내 대역·MTU 1450 → CNI 플러그인이 읽음</text>
+    <text x="205" y="410" text-anchor="middle" font-size="11" fill="#536275" font-weight="800">한 번 적어두면 이후엔 커널이 알아서 씀</text>
+
+    <!-- 설정 → 데이터 연결 -->
+    <path d="M380 358 H436" stroke="#ff7a00" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#fl-o)"/>
+    <text x="408" y="348" text-anchor="middle" font-size="10" fill="#ff7a00" font-weight="900">참조</text>
+
+    <!-- 오른쪽 레인: 데이터 -->
+    <text x="640" y="156" text-anchor="middle" font-size="13" font-weight="900" fill="#ff7a00">📦 패킷이 실제로 지나는 길 (커널)</text>
+    <rect x="440" y="168" width="190" height="50" rx="12" fill="#f5f7fb"/><text x="535" y="189" text-anchor="middle" font-size="14" font-weight="900" fill="#111827">Pod A</text><text x="535" y="208" text-anchor="middle" font-size="11" fill="#536275" font-weight="800">10.244.1.5</text>
+    <rect x="650" y="168" width="190" height="50" rx="12" fill="#f5f7fb"/><text x="745" y="189" text-anchor="middle" font-size="14" font-weight="900" fill="#111827">Pod</text><text x="745" y="208" text-anchor="middle" font-size="11" fill="#536275" font-weight="800">10.244.1.6</text>
+    <path d="M535 218 V246 M745 218 V246" stroke="#3385ff" stroke-width="3"/>
+    <rect x="440" y="246" width="400" height="60" rx="12" fill="#3385ff"/>
+    <text x="640" y="271" text-anchor="middle" font-size="15" font-weight="900" fill="#fff">② cni0 · 브리지 = 같은 노드 안 스위치</text>
+    <text x="640" y="293" text-anchor="middle" font-size="11" fill="#dce9ff" font-weight="800">옆 Pod 로 가는 패킷은 여기서 끝 · 다른 노드면 ↓</text>
+    <path d="M640 306 V326" stroke="#ff7a00" stroke-width="2" marker-end="url(#fl-o)"/>
+    <rect x="440" y="330" width="400" height="60" rx="12" fill="#ff7a00"/>
+    <text x="640" y="355" text-anchor="middle" font-size="15" font-weight="900" fill="#fff">③ flannel.1 · VXLAN 장치 = 다른 노드행 포장기</text>
+    <text x="640" y="377" text-anchor="middle" font-size="11" fill="#fff" font-weight="800">테이블을 보고 "Node B 행" 봉투(노드 IP · UDP)를 씌움</text>
+    <path d="M640 390 V400" stroke="#ff7a00" stroke-width="2"/>
+    <rect x="440" y="400" width="400" height="34" rx="10" fill="#111827" stroke="#ffdf3d" stroke-width="1.5"/>
+    <text x="640" y="423" text-anchor="middle" font-size="13" font-weight="900" fill="#fff">eth0 · 192.168.10.11 → 봉투째 물리망으로</text>
+
+    <!-- 터널 -->
+    <path d="M840 417 H970" stroke="#ff7a00" stroke-width="4" stroke-dasharray="12 8"/>
+    <text x="905" y="396" text-anchor="middle" font-size="11" font-weight="900" fill="#ff7a00">VXLAN · UDP 8472</text>
+
+    <!-- Node B (축약) -->
+    <rect x="970" y="96" width="330" height="344" rx="22" fill="rgba(255,255,255,.045)" stroke="rgba(255,255,255,.2)" stroke-dasharray="7 6"/>
+    <text x="1135" y="126" text-anchor="middle" font-size="16" font-weight="900" fill="#ffdf3d">Node B · 192.168.10.12</text>
+    <text x="1135" y="148" text-anchor="middle" font-size="12" font-weight="800" fill="#aab8c9">Pod 대역 10.244.2.0/24 · 구성은 A와 똑같음</text>
+    <rect x="990" y="168" width="290" height="50" rx="12" fill="#f5f7fb"/><text x="1135" y="189" text-anchor="middle" font-size="14" font-weight="900" fill="#111827">Pod B</text><text x="1135" y="208" text-anchor="middle" font-size="11" fill="#536275" font-weight="800">10.244.2.8</text>
+    <path d="M1135 246 V218" stroke="#3385ff" stroke-width="3"/>
+    <rect x="990" y="246" width="290" height="60" rx="12" fill="#3385ff"/>
+    <text x="1135" y="271" text-anchor="middle" font-size="15" font-weight="900" fill="#fff">cni0</text>
+    <text x="1135" y="293" text-anchor="middle" font-size="11" fill="#dce9ff" font-weight="800">Pod B 로 전달</text>
+    <path d="M1135 326 V310" stroke="#ff7a00" stroke-width="2" marker-end="url(#fl-o)"/>
+    <rect x="990" y="330" width="290" height="60" rx="12" fill="#ff7a00"/>
+    <text x="1135" y="355" text-anchor="middle" font-size="15" font-weight="900" fill="#fff">flannel.1</text>
+    <text x="1135" y="377" text-anchor="middle" font-size="11" fill="#fff" font-weight="800">봉투를 벗김</text>
+    <path d="M1135 400 V390" stroke="#ff7a00" stroke-width="2"/>
+    <rect x="990" y="400" width="290" height="34" rx="10" fill="#111827" stroke="#ffdf3d" stroke-width="1.5"/>
+    <text x="1135" y="423" text-anchor="middle" font-size="13" font-weight="900" fill="#fff">eth0 · 192.168.10.12</text>
+  </svg>
+  <div class="point"><b>flanneld는 패킷을 만지지 않는다.</b> "어느 Pod 대역이 어느 노드인지" 주소록을 커널 테이블에 적어 두는 게 전부. 실제 패킷은 커널이 <b>cni0(같은 노드면 끝)</b> → <b>flannel.1(다른 노드면 봉투)</b> → <b>eth0</b> 순서로 처리</div>
+</main></div></section>
+
+<!-- 07 Flannel 패킷 흐름 -->
+<section class="slide"><div class="safe"><header class="top"><div class="kicker">03 · 터널 · Flannel</div><h2>Pod A → Pod B, <span>편지를 봉투에 담아 건너가는</span> 9단계</h2></header><main class="body">
+  <svg class="svgfig" viewBox="0 0 1300 400" role="img" aria-label="Flannel VXLAN Pod 간 패킷 흐름 · 포장 → 배송 → 개봉">
+    <defs><marker id="ar7" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M0 0 L12 6 L0 12 z" fill="#ff7a00"/></marker>
+    <marker id="arb7" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M0 0 L12 6 L0 12 z" fill="#3385ff"/></marker></defs>
+    <!-- 노드 영역 -->
+    <rect x="0" y="0" width="600" height="400" rx="22" fill="rgba(255,255,255,.045)" stroke="rgba(255,255,255,.2)" stroke-dasharray="7 6"/>
+    <text x="20" y="28" font-size="16" font-weight="900" fill="#ffdf3d">Node A · 192.168.10.11</text>
+    <rect x="700" y="0" width="600" height="400" rx="22" fill="rgba(255,255,255,.045)" stroke="rgba(255,255,255,.2)" stroke-dasharray="7 6"/>
+    <text x="720" y="28" font-size="16" font-weight="900" fill="#ffdf3d">Node B · 192.168.10.12</text>
+    <!-- 단계 상자 -->
+    <g font-weight="900" font-size="15">
+      <rect x="20" y="44" width="170" height="84" rx="12" fill="#f5f7fb"/><text x="105" y="72" text-anchor="middle" fill="#111827">① Pod A가 편지 보냄</text><text x="105" y="92" text-anchor="middle" font-size="12" fill="#536275">받는 곳 10.244.2.8</text><text x="105" y="108" text-anchor="middle" font-size="12" fill="#536275">= Node B 에 있는 Pod B</text>
+      <rect x="20" y="142" width="170" height="84" rx="12" fill="#f5f7fb"/><text x="105" y="170" text-anchor="middle" fill="#111827">② cni0 브리지</text><text x="105" y="190" text-anchor="middle" font-size="12" fill="#536275">같은 노드 Pod 아님</text><text x="105" y="206" text-anchor="middle" font-size="12" fill="#536275">→ 게이트웨이 10.244.1.1</text>
+      <rect x="20" y="240" width="170" height="84" rx="12" fill="#f5f7fb"/><text x="105" y="268" text-anchor="middle" fill="#111827">③ 라우팅 테이블</text><text x="105" y="288" text-anchor="middle" font-size="12" fill="#536275">10.244.2.x 는</text><text x="105" y="304" text-anchor="middle" font-size="12" fill="#536275">flannel.1 로 보내</text>
+      <rect x="205" y="240" width="200" height="84" rx="12" fill="#fff3d6" stroke="#ff7a00" stroke-width="2"/><text x="305" y="268" text-anchor="middle" fill="#111827">④ 봉투에 담기</text><text x="305" y="288" text-anchor="middle" font-size="12" fill="#536275">flannel.1 이 겉면 주소 적음</text><text x="305" y="304" text-anchor="middle" font-size="12" fill="#536275">→ Node B 192.168.10.12</text>
+      <rect x="435" y="240" width="145" height="84" rx="12" fill="#111827" stroke="#ffdf3d" stroke-width="1.5"/><text x="507" y="268" text-anchor="middle" fill="#fff">⑤ eth0 로 송신</text><text x="507" y="288" text-anchor="middle" font-size="12" fill="#ffdf3d">겉봉투 주소로</text><text x="507" y="304" text-anchor="middle" font-size="12" fill="#ffdf3d">UDP 8472 송신</text>
+      <rect x="720" y="240" width="150" height="84" rx="12" fill="#111827" stroke="#ffdf3d" stroke-width="1.5"/><text x="795" y="268" text-anchor="middle" fill="#fff">⑥ eth0 로 수신</text><text x="795" y="288" text-anchor="middle" font-size="12" fill="#ffdf3d">UDP 8472 포트라서</text><text x="795" y="304" text-anchor="middle" font-size="12" fill="#ffdf3d">flannel.1 에 넘김</text>
+      <rect x="895" y="240" width="200" height="84" rx="12" fill="#fff3d6" stroke="#ff7a00" stroke-width="2"/><text x="995" y="268" text-anchor="middle" fill="#111827">⑦ 봉투 벗기기</text><text x="995" y="288" text-anchor="middle" font-size="12" fill="#536275">flannel.1 이 겉 헤더 제거</text><text x="995" y="304" text-anchor="middle" font-size="12" fill="#536275">속 편지 그대로 꺼냄</text>
+      <rect x="1110" y="142" width="170" height="84" rx="12" fill="#f5f7fb"/><text x="1195" y="170" text-anchor="middle" fill="#111827">⑧ cni0 브리지</text><text x="1195" y="190" text-anchor="middle" font-size="12" fill="#536275">10.244.2.8 은 내 Pod</text><text x="1195" y="206" text-anchor="middle" font-size="12" fill="#536275">→ veth 로 전달</text>
+      <rect x="1110" y="44" width="170" height="84" rx="12" fill="#13b87a"/><text x="1195" y="72" text-anchor="middle" fill="#fff">⑨ Pod B가 편지 받음</text><text x="1195" y="92" text-anchor="middle" font-size="12" fill="#e8fff4">발신 10.244.1.5 그대로</text><text x="1195" y="108" text-anchor="middle" font-size="12" fill="#e8fff4">봉투는 흔적도 없음</text>
+    </g>
+    <!-- 화살표 -->
+    <g fill="none" stroke="#3385ff" stroke-width="4" marker-end="url(#arb7)">
+      <path d="M105 128 V140"/><path d="M105 226 V238"/>
+    </g>
+    <g fill="none" stroke="#ff7a00" stroke-width="4" marker-end="url(#ar7)">
+      <path d="M190 282 H203"/><path d="M405 282 H433"/><path d="M870 282 H893"/>
+      <path d="M1095 282 H1195 V228"/><path d="M1195 142 V130"/>
+    </g>
+    <path d="M580 282 H720" stroke="#ff7a00" stroke-width="7" stroke-dasharray="12 8"/>
+    <!-- 전선 위 패킷 = 봉투 속 편지 -->
+    <text x="650" y="70" text-anchor="middle" font-size="13" fill="#aab8c9" font-weight="800">물리망은 겉봉투만 읽음</text>
+    <rect x="590" y="92" width="120" height="120" rx="14" fill="#111827" stroke="#ff7a00" stroke-width="2"/>
+    <text x="650" y="114" text-anchor="middle" font-size="13" font-weight="900" fill="#fff">전선 위 패킷</text>
+    <rect x="600" y="124" width="100" height="22" rx="4" fill="#ff7a00"/><text x="650" y="139" text-anchor="middle" font-size="11" font-weight="900" fill="#fff">겉봉투 · Node 주소</text>
+    <rect x="600" y="150" width="100" height="22" rx="4" fill="#ffdf3d"/><text x="650" y="165" text-anchor="middle" font-size="11" font-weight="900" fill="#111827">VXLAN 표식</text>
+    <rect x="600" y="176" width="100" height="22" rx="4" fill="#3385ff"/><text x="650" y="191" text-anchor="middle" font-size="11" font-weight="900" fill="#fff">속 편지 · Pod 주소</text>
+    <!-- 3단계 요약 띠 -->
+    <g font-size="14" font-weight="900">
+      <rect x="20" y="346" width="560" height="38" rx="10" fill="rgba(255,122,0,.16)" stroke="#ff7a00"/><text x="300" y="371" text-anchor="middle" fill="#ffd9b3"><tspan fill="#ffdf3d">포장 ·</tspan> Pod 주소로 쓴 편지를 Node 주소 봉투에 넣는다</text>
+      <rect x="600" y="346" width="100" height="38" rx="10" fill="rgba(255,255,255,.08)" stroke="rgba(255,255,255,.3)"/><text x="650" y="362" text-anchor="middle" font-size="13" fill="#fff">배송</text><text x="650" y="378" text-anchor="middle" font-size="11" fill="#aab8c9">UDP 8472</text>
+      <rect x="720" y="346" width="560" height="38" rx="10" fill="rgba(255,122,0,.16)" stroke="#ff7a00"/><text x="1000" y="371" text-anchor="middle" fill="#ffd9b3"><tspan fill="#ffdf3d">개봉 ·</tspan> 봉투를 벗기고 편지만 Pod 에게 건넨다</text>
+    </g>
+  </svg>
+  <div class="defline"><b>한 줄 요약 :</b><span>Pod 편지를 <b>Node 주소 봉투</b>에 넣어 보내고, 받는 노드는 봉투만 벗겨 Pod에 전달 — 봉투 주소는 flanneld가 미리 써 둔 표에서 찾음</span></div>
+</main></div></section>
+
+<!-- 08 VXLAN 헤더 -->
+<section class="slide"><div class="safe"><header class="top"><div class="kicker">03 · 터널 · Flannel</div><h2>VXLAN은 <span>L2 프레임을 UDP에 담는</span> 50바이트 포장지</h2></header><main class="body">
+  <svg class="svgfig" viewBox="0 0 1300 220" role="img" aria-label="VXLAN 캡슐화 헤더 구조">
+    <text x="0" y="24" font-size="15" font-weight="900" fill="#ffdf3d">Outer (flanneld가 씌움 · 총 50B)</text>
+    <text x="900" y="24" font-size="15" font-weight="900" fill="#8fc3ff">Inner (Pod가 만든 원본 · 손대지 않음)</text>
+    <g font-weight="900" text-anchor="middle">
+      <rect x="0" y="40" width="200" height="90" rx="12" fill="#ff7a00"/><text x="100" y="72" font-size="16" fill="#fff">Outer Ethernet 14B</text><text x="100" y="96" font-size="12" fill="#fff">src NodeA MAC</text><text x="100" y="114" font-size="12" fill="#fff">dst 다음 홉 MAC</text>
+      <rect x="208" y="40" width="200" height="90" rx="12" fill="#ff7a00"/><text x="308" y="72" font-size="16" fill="#fff">Outer IP 20B</text><text x="308" y="96" font-size="12" fill="#fff">src 192.168.10.11</text><text x="308" y="114" font-size="12" fill="#fff">dst 192.168.10.12</text>
+      <rect x="416" y="40" width="200" height="90" rx="12" fill="#ff7a00"/><text x="516" y="72" font-size="16" fill="#fff">Outer UDP 8B</text><text x="516" y="96" font-size="12" fill="#fff">src 포트 = 해시(로드밸런싱)</text><text x="516" y="114" font-size="12" fill="#fff">dst 8472 (Linux VXLAN)</text>
+      <rect x="624" y="40" width="200" height="90" rx="12" fill="#ffdf3d"/><text x="724" y="72" font-size="16" fill="#111827">VXLAN 8B</text><text x="724" y="96" font-size="12" fill="#111827">VNI = 1 (flannel.1)</text><text x="724" y="114" font-size="12" fill="#111827">네트워크 식별자 24bit</text>
+      <rect x="850" y="40" width="200" height="90" rx="12" fill="#3385ff"/><text x="950" y="72" font-size="16" fill="#fff">Inner Ethernet</text><text x="950" y="96" font-size="12" fill="#fff">src flannel.1(A) MAC</text><text x="950" y="114" font-size="12" fill="#fff">dst flannel.1(B) MAC</text>
+      <rect x="1058" y="40" width="242" height="90" rx="12" fill="#3385ff"/><text x="1179" y="72" font-size="16" fill="#fff">Inner IP + TCP + 데이터</text><text x="1179" y="96" font-size="12" fill="#fff">src 10.244.1.5 → dst 10.244.2.8</text><text x="1179" y="114" font-size="12" fill="#fff">Pod가 보낸 그대로</text>
+    </g>
+    <path d="M0 150 H824" stroke="#ff7a00" stroke-width="3"/><text x="412" y="180" text-anchor="middle" font-size="14" font-weight="900" fill="#ff7a00">← 여기까지 물리망이 보는 부분 · 도착 노드에서 벗겨냄 →</text>
+    <path d="M850 150 H1300" stroke="#3385ff" stroke-width="3"/><text x="1075" y="180" text-anchor="middle" font-size="14" font-weight="900" fill="#8fc3ff">Pod B 가 받는 부분</text>
+    <text x="650" y="212" text-anchor="middle" font-size="14" font-weight="800" fill="#aab8c9">NIC MTU 1500 − 50 = <tspan fill="#ffdf3d" font-weight="900">Pod MTU 1450</tspan> · subnet.env 의 FLANNEL_MTU 가 이 값</text>
+  </svg>
+  <div class="cards">
+    <div><em>📏</em><b>MTU 50B 손실</b><p>Pod 쪽 MTU를 1450으로 안 맞추면<br/>큰 패킷이 조각나거나 드롭됨</p></div>
+    <div><em>🧮</em><b>CPU 캡슐화 비용</b><p>패킷마다 헤더 씌우고 벗기기.<br/>NIC VXLAN 오프로드 있으면 완화</p></div>
+    <div><em>🔍</em><b>디버깅은 tcpdump -i flannel.1</b><p>eth0 에서는 UDP 8472 만 보이고<br/>Pod IP는 캡슐 안에 숨어 있음</p></div>
+  </div>
+  <div class="point">VXLAN의 대가는 <b>50바이트와 CPU</b>. 대신 물리망에 요구하는 것이 없음. host-gw 백엔드는 이 포장을 없애지만 <b>같은 L2 세그먼트</b>에서만 동작</div>
+</main></div></section>
+
+<!-- 09 Calico 아키텍처 -->
+<section class="slide"><div class="safe"><header class="top"><div class="kicker">04 · 라우팅 · Calico</div><h2>Calico는 <span>Felix가 내 노드 안</span>을, <span>BIRD가 이웃 노드</span>를 맡는다</h2></header><main class="body">
+  <svg class="svgfig" viewBox="0 0 1300 440" role="img" aria-label="Calico 아키텍처 — 설정하는 쪽과 패킷이 지나는 길">
+    <defs>
+      <marker id="ca-y" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6 z" fill="#ffdf3d"/></marker>
+      <marker id="ca-o" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6 z" fill="#ff7a00"/></marker>
+      <marker id="ca-b" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6 z" fill="#3385ff"/></marker>
+    </defs>
+
+    <!-- 주소록 -->
+    <rect x="0" y="0" width="1300" height="62" rx="16" fill="#111827" stroke="#ffdf3d" stroke-width="1.5"/>
+    <text x="650" y="27" text-anchor="middle" font-size="18" font-weight="900" fill="#fff">kube-apiserver = 클러스터 주소록 (Flannel과 같은 자리)</text>
+    <text x="650" y="50" text-anchor="middle" font-size="13" fill="#ffdf3d" font-weight="800">"Pod 대역은 10.244.0.0/16 · 누구랑 BGP 대화할지 · 어떤 정책을 걸지" — Calico 설정이 여기에 저장됨</text>
+
+    <!-- Node A -->
+    <rect x="0" y="96" width="870" height="344" rx="22" fill="rgba(255,255,255,.045)" stroke="rgba(255,255,255,.2)" stroke-dasharray="7 6"/>
+    <text x="24" y="126" font-size="16" font-weight="900" fill="#ffdf3d">Node A · 192.168.10.11 · Pod 대역 10.244.1.0/26</text>
+
+    <!-- 왼쪽 레인: 설정 -->
+    <text x="205" y="156" text-anchor="middle" font-size="13" font-weight="900" fill="#ffdf3d">⚙ 설정하는 쪽 · 패킷은 안 만짐 (calico-node 1개)</text>
+    <path d="M205 168 V70" stroke="#ffdf3d" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#ca-y)"/>
+    <rect x="30" y="168" width="350" height="104" rx="12" fill="#fff3d6" stroke="#ff7a00" stroke-width="2"/>
+    <text x="205" y="194" text-anchor="middle" font-size="17" font-weight="900" fill="#111827">① Felix · 내 노드 안 담당</text>
+    <text x="205" y="216" text-anchor="middle" font-size="13" fill="#b35400" font-weight="900">"내 Pod 가 어디 꽂혔는지 커널에 적는 손"</text>
+    <text x="48" y="240" font-size="12" fill="#111827" font-weight="800">• Pod 생기면 라우팅에 한 줄 : 10.244.1.5 → cali3f2a 선으로</text>
+    <text x="48" y="260" font-size="12" fill="#111827" font-weight="800">• NetworkPolicy 는 iptables 규칙으로 바꿔 적음</text>
+    <path d="M205 272 V292" stroke="#ff7a00" stroke-width="2" marker-end="url(#ca-o)"/>
+    <text x="270" y="287" font-size="10" fill="#ff7a00" font-weight="900">Felix 가 적은 걸 BIRD 가 읽음</text>
+    <rect x="30" y="296" width="350" height="124" rx="12" fill="#e3efff" stroke="#3385ff" stroke-width="2"/>
+    <text x="205" y="322" text-anchor="middle" font-size="17" font-weight="900" fill="#111827">② BIRD · 이웃 노드 담당</text>
+    <text x="205" y="344" text-anchor="middle" font-size="13" fill="#1f5fbf" font-weight="900">"내 대역은 나한테 보내" 라고 말하는 입 (BGP)</text>
+    <text x="48" y="368" font-size="12" fill="#111827" font-weight="800">• 말하기 : "10.244.1.0/26 은 나(192.168.10.11)" → 이웃들에게</text>
+    <text x="48" y="388" font-size="12" fill="#111827" font-weight="800">• 듣기 : 이웃 말을 라우팅에 적음 · 10.244.2.0/26 → 192.168.10.12 로</text>
+    <text x="205" y="410" text-anchor="middle" font-size="11" fill="#536275" font-weight="800">한 번 적어두면 이후엔 커널이 알아서 씀 (Flannel과 동일)</text>
+
+    <!-- 설정 → 데이터 연결 -->
+    <path d="M380 358 H436" stroke="#ff7a00" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#ca-o)"/>
+    <text x="408" y="348" text-anchor="middle" font-size="10" fill="#ff7a00" font-weight="900">참조</text>
+
+    <!-- 오른쪽 레인: 데이터 -->
+    <text x="640" y="156" text-anchor="middle" font-size="13" font-weight="900" fill="#ff7a00">📦 패킷이 실제로 지나는 길 (커널)</text>
+    <rect x="440" y="168" width="190" height="50" rx="12" fill="#f5f7fb"/><text x="535" y="189" text-anchor="middle" font-size="14" font-weight="900" fill="#111827">Pod A</text><text x="535" y="208" text-anchor="middle" font-size="11" fill="#536275" font-weight="800">10.244.1.5</text>
+    <rect x="650" y="168" width="190" height="50" rx="12" fill="#f5f7fb"/><text x="745" y="189" text-anchor="middle" font-size="14" font-weight="900" fill="#111827">Pod</text><text x="745" y="208" text-anchor="middle" font-size="11" fill="#536275" font-weight="800">10.244.1.6</text>
+    <path d="M535 218 V246 M745 218 V246" stroke="#3385ff" stroke-width="3"/>
+    <rect x="440" y="246" width="400" height="60" rx="12" fill="#3385ff"/>
+    <text x="640" y="271" text-anchor="middle" font-size="15" font-weight="900" fill="#fff">② caliXXXX · Pod 마다 호스트에 꽂힌 선 하나 · 브리지 없음</text>
+    <text x="640" y="293" text-anchor="middle" font-size="11" fill="#dce9ff" font-weight="800">옆 Pod 로 가는 것도 아래 표를 거쳐 감 · 스위치 대신 표</text>
+    <path d="M640 306 V326" stroke="#ff7a00" stroke-width="2" marker-end="url(#ca-o)"/>
+    <rect x="440" y="330" width="400" height="60" rx="12" fill="#ff7a00"/>
+    <text x="640" y="355" text-anchor="middle" font-size="15" font-weight="900" fill="#fff">③ 라우팅 표 조회 = 포장 없이 갈 곳만 정함</text>
+    <text x="640" y="377" text-anchor="middle" font-size="11" fill="#fff" font-weight="800">"10.244.2.8 ? → 192.168.10.12 로" (BIRD 가 적어둔 줄) · 봉투 없음</text>
+    <path d="M640 390 V400" stroke="#ff7a00" stroke-width="2"/>
+    <rect x="440" y="400" width="400" height="34" rx="10" fill="#111827" stroke="#ffdf3d" stroke-width="1.5"/>
+    <text x="640" y="423" text-anchor="middle" font-size="13" font-weight="900" fill="#fff">eth0 · 192.168.10.11 → 원본 그대로 물리망으로</text>
+
+    <!-- 노드 사이 -->
+    <path d="M870 358 H970" stroke="#3385ff" stroke-width="2" stroke-dasharray="6 5" marker-start="url(#ca-b)" marker-end="url(#ca-b)"/>
+    <text x="920" y="345" text-anchor="middle" font-size="11" font-weight="900" fill="#3385ff">BIRD ↔ BIRD · BGP 대화</text>
+    <path d="M840 417 H970" stroke="#ff7a00" stroke-width="4"/>
+    <text x="905" y="403" text-anchor="middle" font-size="12" font-weight="900" fill="#ff7a00">그냥 IP 라우팅 · 터널 없음</text>
+
+    <!-- Node B (축약) -->
+    <rect x="970" y="96" width="330" height="344" rx="22" fill="rgba(255,255,255,.045)" stroke="rgba(255,255,255,.2)" stroke-dasharray="7 6"/>
+    <text x="1135" y="126" text-anchor="middle" font-size="16" font-weight="900" fill="#ffdf3d">Node B · 192.168.10.12</text>
+    <text x="1135" y="148" text-anchor="middle" font-size="12" font-weight="800" fill="#aab8c9">Pod 대역 10.244.2.0/26 · 구성은 A와 똑같음</text>
+    <rect x="990" y="168" width="290" height="50" rx="12" fill="#f5f7fb"/><text x="1135" y="189" text-anchor="middle" font-size="14" font-weight="900" fill="#111827">Pod B</text><text x="1135" y="208" text-anchor="middle" font-size="11" fill="#536275" font-weight="800">10.244.2.8</text>
+    <path d="M1135 246 V218" stroke="#3385ff" stroke-width="3"/>
+    <rect x="990" y="246" width="290" height="60" rx="12" fill="#3385ff"/>
+    <text x="1135" y="271" text-anchor="middle" font-size="15" font-weight="900" fill="#fff">caliYYYY</text>
+    <text x="1135" y="293" text-anchor="middle" font-size="11" fill="#dce9ff" font-weight="800">Pod B 로 가는 선</text>
+    <path d="M1135 326 V310" stroke="#ff7a00" stroke-width="2" marker-end="url(#ca-o)"/>
+    <rect x="990" y="330" width="290" height="60" rx="12" fill="#ff7a00"/>
+    <text x="1135" y="355" text-anchor="middle" font-size="15" font-weight="900" fill="#fff">라우팅 표 조회</text>
+    <text x="1135" y="377" text-anchor="middle" font-size="11" fill="#fff" font-weight="800">"10.244.2.8 → caliYYYY 로" (Felix 가 적어둔 줄)</text>
+    <path d="M1135 400 V390" stroke="#ff7a00" stroke-width="2"/>
+    <rect x="990" y="400" width="290" height="34" rx="10" fill="#111827" stroke="#ffdf3d" stroke-width="1.5"/>
+    <text x="1135" y="423" text-anchor="middle" font-size="13" font-weight="900" fill="#fff">eth0 · 192.168.10.12</text>
+  </svg>
+  <div class="point"><b>Calico도 패킷은 커널이 처리하고, 데몬은 표만 적는다.</b> <b>Felix</b>는 "내 Pod 는 이 선에 있다"를, <b>BIRD</b>는 "저 대역은 저 노드다"를 라우팅 표에 적음. 패킷은 그 표만 보고 <b>봉투 없이</b> 바로 나감 — 브리지도 터널 장치도 없음</div>
+</main></div></section>
+
+<!-- 10 BGP 전파 -->
+<section class="slide"><div class="safe"><header class="top"><div class="kicker">04 · 라우팅 · Calico</div><h2>BGP는 <span>"내 Pod 대역은 나한테 보내"</span>를 서로 알려주는 절차</h2></header><main class="body">
+  <svg class="svgfig" viewBox="0 0 1300 360" role="img" aria-label="BGP Full mesh와 Route Reflector 비교">
+    <!-- full mesh -->
+    <rect x="0" y="0" width="620" height="360" rx="22" fill="rgba(255,255,255,.045)" stroke="rgba(51,133,255,.5)"/>
+    <text x="20" y="30" font-size="17" font-weight="900" fill="#8fc3ff">기본 · Node-to-Node Full Mesh</text>
+    <text x="20" y="52" font-size="13" fill="#aab8c9" font-weight="800">모든 노드가 서로 피어링 · N(N−1)/2 세션 · ~50노드까지 권장</text>
+    <g font-size="12" font-weight="900" text-anchor="middle">
+      <circle cx="160" cy="120" r="42" fill="#f5f7fb"/><text x="160" y="116" fill="#111827">Node A</text><text x="160" y="132" font-size="10" fill="#536275">10.244.1.0/26</text>
+      <circle cx="460" cy="120" r="42" fill="#f5f7fb"/><text x="460" y="116" fill="#111827">Node B</text><text x="460" y="132" font-size="10" fill="#536275">10.244.2.0/26</text>
+      <circle cx="160" cy="290" r="42" fill="#f5f7fb"/><text x="160" y="286" fill="#111827">Node C</text><text x="160" y="302" font-size="10" fill="#536275">10.244.3.0/26</text>
+      <circle cx="460" cy="290" r="42" fill="#f5f7fb"/><text x="460" y="286" fill="#111827">Node D</text><text x="460" y="302" font-size="10" fill="#536275">10.244.4.0/26</text>
+    </g>
+    <defs>
+      <marker id="arB" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L12 6 L0 12 z" fill="#3385ff"/></marker>
+      <marker id="arY" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L12 6 L0 12 z" fill="#ffdf3d"/></marker>
+    </defs>
+    <!-- 피어링 세션(연결만) -->
+    <g stroke="#3385ff" stroke-width="2" opacity=".3" stroke-dasharray="6 5">
+      <path d="M202 290 H418"/><path d="M460 162 V248"/><path d="M430 150 L190 260"/>
+    </g>
+    <!-- A 가 B,C,D 에게 각각 광고 -->
+    <g fill="none" stroke="#3385ff" stroke-width="3" marker-end="url(#arB)">
+      <path d="M202 120 H410"/><path d="M160 162 V240"/><path d="M190 150 L424 257"/>
+    </g>
+    <rect x="230" y="62" width="160" height="44" rx="10" fill="#111827" stroke="#3385ff"/>
+    <text x="310" y="80" text-anchor="middle" font-size="12" font-weight="900" fill="#fff">A → B,C,D 에 각각 광고</text>
+    <text x="310" y="97" text-anchor="middle" font-size="11" fill="#8fc3ff" font-weight="800">"10.244.1.0/26 next-hop 192.168.10.11"</text>
+    <text x="310" y="335" text-anchor="middle" font-size="11" fill="#aab8c9" font-weight="800">B,C,D 도 각자 자기 대역을 같은 식으로 3곳에 광고</text>
+    <!-- RR -->
+    <rect x="680" y="0" width="620" height="360" rx="22" fill="rgba(255,255,255,.045)" stroke="rgba(255,223,61,.5)"/>
+    <text x="700" y="30" font-size="17" font-weight="900" fill="#ffdf3d">대규모 · Route Reflector (RR)</text>
+    <text x="700" y="52" font-size="13" fill="#aab8c9" font-weight="800">노드는 RR 에게만 피어링 · 세션 N개 · RR 이 대신 전파 · 물리 ToR 스위치를 RR로 쓸 수도</text>
+    <g font-size="12" font-weight="900" text-anchor="middle">
+      <rect x="920" y="90" width="140" height="70" rx="14" fill="#ffdf3d"/><text x="990" y="118" fill="#111827" font-size="15">Route Reflector</text><text x="990" y="140" font-size="11" fill="#111827">노드 2~3개 지정 (HA)</text>
+      <circle cx="760" cy="290" r="38" fill="#f5f7fb"/><text x="760" y="294" fill="#111827">Node A</text>
+      <circle cx="915" cy="290" r="38" fill="#f5f7fb"/><text x="915" y="294" fill="#111827">Node B</text>
+      <circle cx="1070" cy="290" r="38" fill="#f5f7fb"/><text x="1070" y="294" fill="#111827">Node C</text>
+      <circle cx="1225" cy="290" r="38" fill="#f5f7fb"/><text x="1225" y="294" fill="#111827">Node D</text>
+    </g>
+    <!-- ① A → RR 광고 -->
+    <path d="M760 252 L940 168" fill="none" stroke="#ffdf3d" stroke-width="4" marker-end="url(#arY)"/>
+    <!-- ② RR → B,C,D 반사 -->
+    <g fill="none" stroke="#ffdf3d" stroke-width="3" opacity=".85" marker-end="url(#arY)">
+      <path d="M975 160 L925 246"/><path d="M1005 160 L1062 246"/><path d="M1035 160 L1206 250"/>
+    </g>
+    <text x="820" y="200" text-anchor="middle" font-size="12" fill="#ffdf3d" font-weight="900">① A 광고 ↑</text>
+    <text x="1165" y="180" text-anchor="middle" font-size="12" fill="#ffdf3d" font-weight="900">② RR 이 B,C,D 로 반사 ↓</text>
+    <text x="810" y="128" text-anchor="middle" font-size="12" fill="#ffdf3d" font-weight="900">A 광고 → RR → B,C,D 로 반사</text>
+  </svg>
+  <div class="defline"><b>결과 :</b><span>모든 노드 커널에 <code>10.244.2.0/26 via 192.168.10.12 dev eth0 proto bird</code> 같은 줄이 자동으로 생김. <code>ip route | grep bird</code> 로 확인</span></div>
+  <div class="point">광고 단위는 노드가 아니라 <b>IPAM 블록(/26)</b>. 다른 노드에 라우트가 있으면 캡슐화 없이 <b>일반 IP 라우팅</b>으로 Pod에 도착</div>
+</main></div></section>
+
+<!-- 11 Calico 패킷 흐름 -->
+<section class="slide"><div class="safe"><header class="top"><div class="kicker">04 · 라우팅 · Calico</div><h2>Calico의 패킷은 <span>포장 없이 라우팅 테이블만 타고</span> 이동</h2></header><main class="body">
+  <svg class="svgfig" viewBox="0 0 1300 330" role="img" aria-label="Calico BGP 모드 Pod 간 패킷 흐름">
+    <defs><marker id="ar2" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M0 0 L12 6 L0 12 z" fill="#3385ff"/></marker></defs>
+    <rect x="0" y="0" width="600" height="330" rx="22" fill="rgba(255,255,255,.045)" stroke="rgba(255,255,255,.2)" stroke-dasharray="7 6"/>
+    <text x="20" y="28" font-size="15" font-weight="900" fill="#8fc3ff">Node A · 192.168.10.11</text>
+    <rect x="700" y="0" width="600" height="330" rx="22" fill="rgba(255,255,255,.045)" stroke="rgba(255,255,255,.2)" stroke-dasharray="7 6"/>
+    <text x="720" y="28" font-size="15" font-weight="900" fill="#8fc3ff">Node B · 192.168.10.12</text>
+    <g font-weight="900" font-size="14">
+      <rect x="20" y="50" width="150" height="64" rx="12" fill="#f5f7fb"/><text x="95" y="76" text-anchor="middle" fill="#111827">① Pod A</text><text x="95" y="98" text-anchor="middle" font-size="11" fill="#536275">GW 169.254.1.1</text>
+      <rect x="20" y="140" width="150" height="80" rx="12" fill="#fff3d6" stroke="#ff7a00" stroke-width="2"/><text x="95" y="166" text-anchor="middle" fill="#111827">② ARP 169.254.1.1?</text><text x="95" y="186" text-anchor="middle" font-size="11" fill="#536275">호스트 cali 인터페이스가</text><text x="95" y="202" text-anchor="middle" font-size="11" fill="#536275">proxy_arp 로 자기 MAC 응답</text>
+      <rect x="20" y="246" width="150" height="64" rx="12" fill="#f5f7fb"/><text x="95" y="272" text-anchor="middle" fill="#111827">③ veth(caliXX) 진입</text><text x="95" y="294" text-anchor="middle" font-size="11" fill="#536275">브리지 없이 호스트로</text>
+      <rect x="220" y="246" width="170" height="64" rx="12" fill="#f5f7fb"/><text x="305" y="266" text-anchor="middle" fill="#111827">④ iptables cali-fw-*</text><text x="305" y="284" text-anchor="middle" font-size="11" fill="#536275">Egress NetworkPolicy 검사</text><text x="305" y="300" text-anchor="middle" font-size="11" fill="#536275">(Felix가 쓴 체인)</text>
+      <rect x="420" y="246" width="160" height="64" rx="12" fill="#111827" stroke="#8fc3ff" stroke-width="1.5"/><text x="500" y="266" text-anchor="middle" fill="#fff">⑤ 라우팅 → eth0</text><text x="500" y="284" text-anchor="middle" font-size="11" fill="#8fc3ff">10.244.2.0/26 via .12 (bird)</text><text x="500" y="300" text-anchor="middle" font-size="11" fill="#8fc3ff">헤더 그대로 · dst MAC만 B</text>
+      <rect x="720" y="246" width="160" height="64" rx="12" fill="#111827" stroke="#8fc3ff" stroke-width="1.5"/><text x="800" y="266" text-anchor="middle" fill="#fff">⑥ eth0 수신 → 라우팅</text><text x="800" y="284" text-anchor="middle" font-size="11" fill="#8fc3ff">10.244.2.8/32 dev cali9b1c</text><text x="800" y="300" text-anchor="middle" font-size="11" fill="#8fc3ff">(Felix가 쓴 /32 로컬 라우트)</text>
+      <rect x="920" y="246" width="170" height="64" rx="12" fill="#f5f7fb"/><text x="1005" y="266" text-anchor="middle" fill="#111827">⑦ iptables cali-tw-*</text><text x="1005" y="284" text-anchor="middle" font-size="11" fill="#536275">Ingress NetworkPolicy 검사</text><text x="1005" y="300" text-anchor="middle" font-size="11" fill="#536275">차단이면 여기서 DROP</text>
+      <rect x="1130" y="140" width="150" height="64" rx="12" fill="#f5f7fb"/><text x="1205" y="166" text-anchor="middle" fill="#111827">⑧ cali9b1c → veth</text><text x="1205" y="188" text-anchor="middle" font-size="11" fill="#536275">Pod netns 로 전달</text>
+      <rect x="1130" y="50" width="150" height="64" rx="12" fill="#13b87a"/><text x="1205" y="76" text-anchor="middle" fill="#fff">⑨ Pod B</text><text x="1205" y="98" text-anchor="middle" font-size="11" fill="#e8fff4">src 10.244.1.5 · 변형 없음</text>
+    </g>
+    <g fill="none" stroke="#3385ff" stroke-width="2.5" marker-end="url(#ar2)">
+      <path d="M95 114 V136"/><path d="M95 220 V242"/><path d="M170 278 H216"/><path d="M390 278 H416"/><path d="M880 278 H916"/><path d="M1090 278 H1205 V208"/><path d="M1205 140 V118"/>
+    </g>
+    <path d="M580 278 H720" stroke="#3385ff" stroke-width="4"/>
+    <rect x="590" y="130" width="120" height="110" rx="14" fill="#111827" stroke="#3385ff" stroke-width="2"/>
+    <text x="650" y="158" text-anchor="middle" font-size="13" font-weight="900" fill="#fff">전선 위 패킷</text>
+    <rect x="600" y="170" width="100" height="22" rx="4" fill="#3385ff"/><text x="650" y="186" text-anchor="middle" font-size="11" font-weight="900" fill="#fff">Ethernet (MAC B)</text>
+    <rect x="600" y="198" width="100" height="22" rx="4" fill="#3385ff"/><text x="650" y="214" text-anchor="middle" font-size="11" font-weight="900" fill="#fff">IP 10.244.1.5→2.8</text>
+    <text x="650" y="100" text-anchor="middle" font-size="12" fill="#aab8c9" font-weight="800">Pod IP가 그대로 노출</text>
+    <text x="650" y="118" text-anchor="middle" font-size="12" fill="#aab8c9" font-weight="800">→ 물리망이 이 대역을 알아야 함</text>
+  </svg>
+  <div class="defline"><b>②의 비밀 :</b><span>Pod가 "게이트웨이 169.254.1.1 누구세요?" 라고 물으면 <b>호스트가 "나예요" 하고 거짓 응답</b>(proxy_arp). 실제로 그 IP는 어디에도 없지만, 덕분에 Pod는 모든 패킷을 그냥 호스트에 던지고 끝. 브리지·노드별 GW IP 설계가 통째로 사라짐</span></div>
+  <div class="point"><b>포장(캡슐화)이 없다</b>는 게 핵심. Pod가 보낸 패킷이 그 모습 그대로 ⑤→⑥ 전선을 건너 Pod B에 도착. 커널은 각 단계에서 <code>ip route</code> 한 줄만 보고 다음 홉을 고르고, tcpdump를 어느 지점에서 떠도 <b>같은 Pod IP</b>가 보임</div>
+</main></div></section>
+
+<!-- 13 Pod-to-Pod 흐름 비교 -->
+<section class="slide"><div class="safe"><header class="top"><div class="kicker">05 · 비교</div><h2>같은 패킷, <span>두 갈래 길</span> 나란히 비교</h2></header><main class="body">
+  <svg class="svgfig" viewBox="0 0 1300 300" role="img" aria-label="Flannel과 Calico 패킷 경로 비교">
+    <defs><marker id="ao" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M0 0 L12 6 L0 12 z" fill="#ff7a00"/></marker><marker id="ab" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M0 0 L12 6 L0 12 z" fill="#3385ff"/></marker></defs>
+    <text x="0" y="24" font-size="17" font-weight="900" fill="#ffdf3d">Flannel · VXLAN</text>
+    <g font-size="13" font-weight="900" text-anchor="middle">
+      <rect x="0" y="40" width="120" height="60" rx="12" fill="#f5f7fb"/><text x="60" y="66" fill="#111827">Pod A</text><text x="60" y="86" font-size="11" fill="#536275">10.244.1.5</text>
+      <rect x="160" y="40" width="120" height="60" rx="12" fill="#f5f7fb"/><text x="220" y="66" fill="#111827">veth</text>
+      <rect x="320" y="40" width="120" height="60" rx="12" fill="#3385ff"/><text x="380" y="66" fill="#fff">cni0 브리지</text><text x="380" y="86" font-size="11" fill="#dce9ff">L2 스위칭</text>
+      <rect x="480" y="40" width="140" height="60" rx="12" fill="#ff7a00"/><text x="550" y="60" fill="#fff">flannel.1</text><text x="550" y="78" font-size="11" fill="#fff">캡슐화 +50B</text><text x="550" y="94" font-size="11" fill="#fff">ARP·FDB 조회</text>
+      <rect x="660" y="40" width="120" height="60" rx="12" fill="#111827" stroke="#ffdf3d"/><text x="720" y="66" fill="#fff">eth0 → 물리망</text><text x="720" y="86" font-size="11" fill="#ffdf3d">UDP 8472</text>
+      <rect x="820" y="40" width="140" height="60" rx="12" fill="#ff7a00"/><text x="890" y="60" fill="#fff">flannel.1</text><text x="890" y="78" font-size="11" fill="#fff">디캡슐화</text><text x="890" y="94" font-size="11" fill="#fff">VNI 확인</text>
+      <rect x="1000" y="40" width="120" height="60" rx="12" fill="#3385ff"/><text x="1060" y="66" fill="#fff">cni0 브리지</text>
+      <rect x="1160" y="40" width="140" height="60" rx="12" fill="#13b87a"/><text x="1230" y="66" fill="#fff">Pod B</text><text x="1230" y="86" font-size="11" fill="#e8fff4">10.244.2.8</text>
+    </g>
+    <g fill="none" stroke="#ff7a00" stroke-width="2.5" marker-end="url(#ao)"><path d="M120 70 H156"/><path d="M280 70 H316"/><path d="M440 70 H476"/><path d="M620 70 H656"/><path d="M780 70 H816"/><path d="M960 70 H996"/><path d="M1120 70 H1156"/></g>
+    <text x="650" y="128" text-anchor="middle" font-size="13" font-weight="800" fill="#aab8c9">가상 장치 <tspan fill="#ff7a00" font-weight="900">6개</tspan> 통과 · 캡슐/디캡 <tspan fill="#ff7a00" font-weight="900">2회</tspan> · 브리지 학습 <tspan fill="#ff7a00" font-weight="900">2회</tspan> · Pod MTU 1450 · 정책 검사 지점 없음</text>
+
+    <text x="0" y="176" font-size="17" font-weight="900" fill="#8fc3ff">Calico · BGP (No overlay)</text>
+    <g font-size="13" font-weight="900" text-anchor="middle">
+      <rect x="0" y="192" width="120" height="60" rx="12" fill="#f5f7fb"/><text x="60" y="218" fill="#111827">Pod A</text><text x="60" y="238" font-size="11" fill="#536275">10.244.1.5</text>
+      <rect x="200" y="192" width="200" height="60" rx="12" fill="#f5f7fb"/><text x="300" y="212" fill="#111827">caliXX veth</text><text x="300" y="230" font-size="11" fill="#536275">proxy_arp · iptables</text><text x="300" y="246" font-size="11" fill="#b35400">Egress 정책 검사</text>
+      <rect x="480" y="192" width="300" height="60" rx="12" fill="#111827" stroke="#8fc3ff"/><text x="630" y="214" fill="#fff">호스트 라우팅 → eth0 → 물리망 → eth0</text><text x="630" y="238" font-size="11" fill="#8fc3ff">ip route 10.244.2.0/26 via .12 · 헤더 그대로</text>
+      <rect x="860" y="192" width="220" height="60" rx="12" fill="#f5f7fb"/><text x="970" y="212" fill="#111827">라우팅 → cali9b1c</text><text x="970" y="230" font-size="11" fill="#536275">10.244.2.8/32 dev cali9b1c</text><text x="970" y="246" font-size="11" fill="#b35400">Ingress 정책 검사</text>
+      <rect x="1160" y="192" width="140" height="60" rx="12" fill="#13b87a"/><text x="1230" y="218" fill="#fff">Pod B</text><text x="1230" y="238" font-size="11" fill="#e8fff4">10.244.2.8</text>
+    </g>
+    <g fill="none" stroke="#3385ff" stroke-width="2.5" marker-end="url(#ab)"><path d="M120 222 H196"/><path d="M400 222 H476"/><path d="M780 222 H856"/><path d="M1080 222 H1156"/></g>
+    <text x="650" y="284" text-anchor="middle" font-size="13" font-weight="800" fill="#aab8c9">가상 장치 <tspan fill="#8fc3ff" font-weight="900">2개</tspan>(veth 양끝) · 캡슐화 <tspan fill="#8fc3ff" font-weight="900">0회</tspan> · 브리지 없음 · Pod MTU 1500 · 정책 검사 지점 <tspan fill="#8fc3ff" font-weight="900">2곳</tspan></text>
+  </svg>
+  <div class="point">Flannel은 <b>"모르는 망을 건너기 위한 장치"</b>가 경로에 많고, Calico는 <b>"라우터처럼 동작하는 호스트"</b>가 경로 자체. 이 차이가 곧 성능·관측성·정책 지점의 차이</div>
+</main></div></section>
+
+<!-- 14 비교표 -->
+<section class="slide"><div class="safe"><header class="top"><div class="kicker">05 · 비교</div><h2>숫자와 <span>운영 관점</span> 비교</h2></header><main class="body">
+  <table class="tbl">
+    <tr><th>항목</th><th class="f">Flannel (VXLAN 백엔드)</th><th class="c">Calico (BGP · 기본)</th></tr>
+    <tr><td>노드 간 전달</td><td>VXLAN 터널 · UDP 8472 · 50B 오버헤드</td><td>순수 L3 라우팅 · 헤더 추가 없음 (IPIP/VXLAN 옵션)</td></tr>
+    <tr><td>Pod MTU</td><td>1450 (NIC 1500 기준)</td><td>1500 · IPIP 시 1480 · VXLAN 시 1450</td></tr>
+    <tr><td>노드 내 연결</td><td>cni0 Linux 브리지 (L2)</td><td>브리지 없음 · /32 라우트 + proxy ARP (L3)</td></tr>
+    <tr><td>경로 정보 전파</td><td>flanneld 가 apiserver watch → route·ARP·FDB 정적 기록</td><td>BIRD 가 BGP 로 광고 · Felix 가 커널 라우트 기록</td></tr>
+    <tr><td>NetworkPolicy</td><td class="no">✗ 미지원 (Canal = Flannel + Calico 정책으로 보완)</td><td class="ok">✓ K8s 표준 + GlobalNetworkPolicy · eBPF 옵션</td></tr>
+    <tr><td>IPAM</td><td>노드당 /24 고정 (podCIDR) · 단순</td><td>/26 블록 동적 · 노드별 여러 블록 · 풀 여러 개</td></tr>
+    <tr><td>물리망 요구</td><td>노드 간 UDP 8472 만 열리면 됨</td><td>Pod CIDR 라우팅 가능해야 함 · 못 하면 CrossSubnet</td></tr>
+    <tr><td>운영 난이도</td><td>낮음 · 컴포넌트 1개 · 장애 지점 적음</td><td>중간 · BGP·정책·eBPF 이해 필요 · calicoctl</td></tr>
+    <tr><td>디버깅 관측</td><td>eth0 에선 Pod IP 안 보임 → flannel.1 에서 캡처</td><td>어느 지점이든 Pod IP 그대로 · ip route 로 추적</td></tr>
+  </table>
+  <div class="point">성능·정책·규모가 필요하면 <b>Calico</b>, 단순함과 "어디서나 그냥 되는 것"이 우선이면 <b>Flannel</b>. 둘 다 CNI 규격이라 <b>Pod 입장에서는 차이가 없음</b></div>
+</main></div></section>
+
+<!-- 17 선택 가이드 -->
+<section class="slide"><div class="safe"><header class="top"><div class="kicker">07 · 선택</div><h2>선택을 가르는 <span>세 가지 기준</span></h2></header><main class="body">
+  <svg class="svgfig" viewBox="0 0 1300 300" role="img" aria-label="CNI 선택 결정 흐름">
+    <g font-weight="900" text-anchor="middle">
+      <rect x="0" y="100" width="260" height="100" rx="18" fill="#111827" stroke="#ffdf3d" stroke-width="1.5"/>
+      <text x="130" y="140" font-size="17" fill="#fff">Q1. NetworkPolicy 필요?</text><text x="130" y="166" font-size="12" fill="#aab8c9">멀티테넌트 · 보안 규제 · 마이크로서비스 격리</text>
+      <path d="M260 130 H305 V70 H326" stroke="#13b87a" stroke-width="5" fill="none"/><path d="M326 61 l24 9 -24 9 z" fill="#13b87a"/><text x="313" y="108" font-size="12" fill="#13b87a" text-anchor="start">예</text>
+      <path d="M260 170 H305 V230 H326" stroke="#ff7a00" stroke-width="5" fill="none"/><path d="M326 221 l24 9 -24 9 z" fill="#ff7a00"/><text x="313" y="205" font-size="12" fill="#ff7a00" text-anchor="start">아니오</text>
+      <rect x="350" y="180" width="260" height="100" rx="18" fill="#111827" stroke="#ffdf3d" stroke-width="1.5"/>
+      <text x="480" y="220" font-size="17" fill="#fff">Q2. 노드 50개 이하 · 단순 운영?</text><text x="480" y="246" font-size="12" fill="#aab8c9">엣지 · 개발 클러스터 · 소규모 팀</text>
+      <path d="M610 230 H670" stroke="#13b87a" stroke-width="5"/><path d="M670 221 l24 9 -24 9 z" fill="#13b87a"/><text x="640" y="218" font-size="12" fill="#13b87a">예</text>
+      <rect x="700" y="190" width="240" height="80" rx="16" fill="#ffdf3d"/><text x="820" y="222" font-size="20" fill="#111827">Flannel VXLAN</text><text x="820" y="248" font-size="12" fill="#111827">컴포넌트 1개 · 어디서나 동작</text>
+      <path d="M480 180 V146" stroke="#ff7a00" stroke-width="5" fill="none"/><path d="M471 146 l9 -24 9 24 z" fill="#ff7a00"/><text x="496" y="160" font-size="12" fill="#ff7a00" text-anchor="start">아니오 · 규모/성능 필요</text>
+      <rect x="350" y="20" width="260" height="100" rx="18" fill="#111827" stroke="#8fc3ff" stroke-width="1.5"/>
+      <text x="480" y="60" font-size="17" fill="#fff">Q3. 물리망이 Pod CIDR 라우팅?</text><text x="480" y="86" font-size="12" fill="#aab8c9">ToR BGP 피어 · 같은 L2 · 네트워크팀 협업</text>
+      <path d="M610 50 H670" stroke="#13b87a" stroke-width="5"/><path d="M670 41 l24 9 -24 9 z" fill="#13b87a"/><text x="640" y="38" font-size="12" fill="#13b87a">예</text>
+      <rect x="700" y="10" width="240" height="80" rx="16" fill="#3385ff"/><text x="820" y="42" font-size="20" fill="#fff">Calico BGP · None</text><text x="820" y="68" font-size="12" fill="#dce9ff">온프렘 최고 성능 · MTU 1500</text>
+      <path d="M610 95 H640 V140 H670" stroke="#ff7a00" stroke-width="5" fill="none"/><path d="M670 131 l24 9 -24 9 z" fill="#ff7a00"/><text x="648" y="125" font-size="12" fill="#ff7a00" text-anchor="start">아니오</text>
+      <rect x="700" y="100" width="240" height="80" rx="16" fill="#e3efff"/><text x="820" y="132" font-size="20" fill="#111827">Calico IPIP/VXLAN</text><text x="820" y="158" font-size="12" fill="#1f5fbf">CrossSubnet · 클라우드 VPC 기본값</text>
+      <rect x="980" y="10" width="320" height="270" rx="18" fill="#f5f7fb"/>
+      <text x="1140" y="42" font-size="16" fill="#111827">운영 체크포인트</text>
+      <g font-size="12" fill="#111827" font-weight="800" text-anchor="start">
+        <text x="996" y="72">□ MTU: NIC − 캡슐 헤더 = Pod MTU 일치?</text>
+        <text x="996" y="96">□ 방화벽: UDP 8472/4789 · IP proto 4 · TCP 179</text>
+        <text x="996" y="120">□ IPAM: 노드 수 × 블록 → /16 이 충분한가</text>
+        <text x="996" y="144">□ kube-proxy 모드(iptables/IPVS)와 충돌 없나</text>
+        <text x="996" y="168">□ 정책 기본 거부 후 DNS(53) 허용 잊지 않기</text>
+        <text x="996" y="192">□ 노드 100+ 면 Typha · RR 검토</text>
+        <text x="996" y="216">□ 관측: flannel.1 vs eth0 어디서 tcpdump?</text>
+      </g>
+      <text x="1140" y="258" font-size="12" fill="#b35400" font-weight="900">장애의 80%는 MTU 와 방화벽 포트</text>
+    </g>
+  </svg>
+  <div class="point">이미 Flannel인데 정책이 필요해졌다면 <b>Canal(Flannel 데이터 플레인 + Calico 정책)</b>이 중간 정거장. 새로 시작하면 <b>Calico CrossSubnet</b>이 무난한 기본값</div>
+</main></div></section>
+
+<!-- 18 정리 -->
+<section class="slide"><div class="safe"><header class="top"><div class="kicker">정리</div><h2>같은 패킷, <span>eth0에서 갈리는 두 길</span> 한 장 요약</h2></header><main class="body">
+  <svg class="svgfig" viewBox="0 0 1300 400" role="img" aria-label="정리: Flannel과 Calico 패킷 여정 한 장 요약">
+    <defs>
+      <marker id="sm-o" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="#ff7a00"/></marker>
+      <marker id="sm-b" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="#3385ff"/></marker>
+      <marker id="sm-w" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="#aab8c9"/></marker>
+    </defs>
+    <!-- common start -->
+    <rect x="0" y="150" width="120" height="60" rx="12" fill="#f5f7fb"/>
+    <text x="60" y="176" text-anchor="middle" font-size="16" font-weight="900" fill="#111827">Pod A</text>
+    <text x="60" y="196" text-anchor="middle" font-size="11" fill="#536275" font-weight="800">10.244.1.5</text>
+    <path d="M120 180 H150" stroke="#aab8c9" stroke-width="1.5" marker-end="url(#sm-w)"/>
+    <text x="240" y="138" text-anchor="middle" font-size="12" font-weight="900" fill="#aab8c9">노드 안 · 어느 CNI든 같음</text>
+    <rect x="150" y="150" width="180" height="60" rx="12" fill="#f5f7fb"/>
+    <text x="240" y="176" text-anchor="middle" font-size="15" font-weight="900" fill="#111827">veth · IP 할당 · cni0</text>
+    <text x="240" y="196" text-anchor="middle" font-size="11" fill="#536275" font-weight="800">kubelet → CNI 플러그인</text>
+    <!-- fork -->
+    <path d="M330 180 C365 180 365 90 400 90" fill="none" stroke="#ff7a00" stroke-width="2" marker-end="url(#sm-o)"/>
+    <path d="M330 180 C365 180 365 270 400 270" fill="none" stroke="#3385ff" stroke-width="2" marker-end="url(#sm-b)"/>
+    <text x="365" y="185" text-anchor="middle" font-size="12" font-weight="900" fill="#ffdf3d">갈림</text>
+
+    <!-- Flannel lane -->
+    <text x="400" y="46" font-size="16" font-weight="900" fill="#ff7a00">Flannel · VXLAN (Overlay) — 포장해서 던진다</text>
+    <rect x="400" y="60" width="160" height="60" rx="12" fill="#ff7a00"/>
+    <text x="480" y="85" text-anchor="middle" font-size="15" font-weight="900" fill="#fff">flannel.1</text>
+    <text x="480" y="105" text-anchor="middle" font-size="11" fill="#fff" font-weight="800">+50B VXLAN 헤더</text>
+    <path d="M560 90 H590" stroke="#ff7a00" stroke-width="1.5" marker-end="url(#sm-o)"/>
+    <rect x="590" y="60" width="110" height="60" rx="12" fill="#111827" stroke="#ff7a00" stroke-width="1.5"/>
+    <text x="645" y="85" text-anchor="middle" font-size="15" font-weight="900" fill="#fff">eth0</text>
+    <text x="645" y="105" text-anchor="middle" font-size="11" fill="#ffdf3d" font-weight="800">UDP 8472</text>
+    <path d="M700 90 H730" stroke="#ff7a00" stroke-width="1.5" marker-end="url(#sm-o)"/>
+    <rect x="730" y="60" width="200" height="60" rx="12" fill="rgba(255,122,0,.16)" stroke="#ff7a00" stroke-dasharray="6 4"/>
+    <text x="830" y="85" text-anchor="middle" font-size="15" font-weight="900" fill="#ffb066">물리망 · 몰라도 됨</text>
+    <text x="830" y="105" text-anchor="middle" font-size="11" fill="#ffd8b5" font-weight="800">노드 IP만 보임 · Pod IP는 봉투 안</text>
+    <path d="M930 90 H960" stroke="#ff7a00" stroke-width="1.5" marker-end="url(#sm-o)"/>
+    <rect x="960" y="60" width="160" height="60" rx="12" fill="#ff7a00"/>
+    <text x="1040" y="85" text-anchor="middle" font-size="15" font-weight="900" fill="#fff">flannel.1</text>
+    <text x="1040" y="105" text-anchor="middle" font-size="11" fill="#fff" font-weight="800">봉투 벗김</text>
+    <path d="M1120 90 C1150 90 1150 180 1180 180" fill="none" stroke="#ff7a00" stroke-width="2" marker-end="url(#sm-o)"/>
+
+    <!-- Calico lane -->
+    <rect x="400" y="240" width="160" height="60" rx="12" fill="#3385ff"/>
+    <text x="480" y="265" text-anchor="middle" font-size="15" font-weight="900" fill="#fff">라우팅 테이블</text>
+    <text x="480" y="285" text-anchor="middle" font-size="11" fill="#dce9ff" font-weight="800">Felix /32 · BIRD BGP 광고</text>
+    <path d="M560 270 H590" stroke="#3385ff" stroke-width="1.5" marker-end="url(#sm-b)"/>
+    <rect x="590" y="240" width="110" height="60" rx="12" fill="#111827" stroke="#3385ff" stroke-width="1.5"/>
+    <text x="645" y="265" text-anchor="middle" font-size="15" font-weight="900" fill="#fff">eth0</text>
+    <text x="645" y="285" text-anchor="middle" font-size="11" fill="#8fc3ff" font-weight="800">헤더 그대로</text>
+    <path d="M700 270 H730" stroke="#3385ff" stroke-width="1.5" marker-end="url(#sm-b)"/>
+    <rect x="730" y="240" width="200" height="60" rx="12" fill="rgba(51,133,255,.16)" stroke="#3385ff" stroke-dasharray="6 4"/>
+    <text x="830" y="265" text-anchor="middle" font-size="15" font-weight="900" fill="#8fc3ff">물리망 · BGP로 설득</text>
+    <text x="830" y="285" text-anchor="middle" font-size="11" fill="#c9deff" font-weight="800">Pod IP 경로를 이미 알고 있음</text>
+    <path d="M930 270 H960" stroke="#3385ff" stroke-width="1.5" marker-end="url(#sm-b)"/>
+    <rect x="960" y="240" width="160" height="60" rx="12" fill="#3385ff"/>
+    <text x="1040" y="265" text-anchor="middle" font-size="15" font-weight="900" fill="#fff">veth로 바로</text>
+    <text x="1040" y="285" text-anchor="middle" font-size="11" fill="#dce9ff" font-weight="800">호스트 = 라우터</text>
+    <path d="M1120 270 C1150 270 1150 180 1180 180" fill="none" stroke="#3385ff" stroke-width="2" marker-end="url(#sm-b)"/>
+    <text x="400" y="326" font-size="16" font-weight="900" fill="#3385ff">Calico · BGP (Underlay) — 망에 알려준다</text>
+
+    <!-- Pod B -->
+    <rect x="1180" y="150" width="120" height="60" rx="12" fill="#f5f7fb"/>
+    <text x="1240" y="176" text-anchor="middle" font-size="16" font-weight="900" fill="#111827">Pod B</text>
+    <text x="1240" y="196" text-anchor="middle" font-size="11" fill="#536275" font-weight="800">10.244.2.8</text>
+
+    <!-- control chips -->
+    <rect x="0" y="346" width="300" height="54" rx="12" fill="rgba(255,255,255,.06)" stroke="rgba(255,255,255,.16)"/>
+    <text x="16" y="368" font-size="12" font-weight="900" fill="#aab8c9">IPAM</text>
+    <text x="16" y="388" font-size="13" font-weight="900" fill="#ffb066">Flannel · 노드당 /24 고정</text>
+    <rect x="320" y="346" width="300" height="54" rx="12" fill="rgba(255,255,255,.06)" stroke="rgba(255,255,255,.16)"/>
+    <text x="336" y="368" font-size="12" font-weight="900" fill="#aab8c9">IPAM</text>
+    <text x="336" y="388" font-size="13" font-weight="900" fill="#8fc3ff">Calico · /26 블록 동적 대여 → 테이블 크기 결정</text>
+    <rect x="660" y="346" width="300" height="54" rx="12" fill="rgba(255,255,255,.06)" stroke="rgba(255,255,255,.16)"/>
+    <text x="676" y="368" font-size="12" font-weight="900" fill="#aab8c9">NetworkPolicy</text>
+    <text x="676" y="388" font-size="13" font-weight="900" fill="#ff6b6b">Flannel 단독 ✗ · YAML 무시됨</text>
+    <rect x="980" y="346" width="320" height="54" rx="12" fill="rgba(255,255,255,.06)" stroke="rgba(255,255,255,.16)"/>
+    <text x="996" y="368" font-size="12" font-weight="900" fill="#aab8c9">NetworkPolicy</text>
+    <text x="996" y="388" font-size="13" font-weight="900" fill="#13b87a">Calico ✓ · veth 앞 iptables/eBPF 체인</text>
+  </svg>
+  <div class="point">한 문장으로: <b>Overlay는 망을 속이고, Underlay는 망을 설득한다.</b> 어느 쪽을 택하든 MTU와 방화벽 포트 확인이 우선</div>
+</main></div></section>
+
+
+</div>
+<script>
+const slides=[...document.querySelectorAll('.slide')],total=slides.length;
+slides.forEach((s,idx)=>{const p=document.createElement('div');p.className='page';p.textContent=String(idx+1).padStart(2,'0')+' / '+String(total).padStart(2,'0');s.appendChild(p);});
+let i=Math.max(0,Math.min(total-1,(parseInt(location.hash.replace('#',''))||1)-1));
+function fit(){const sc=Math.min(innerWidth/1600,innerHeight/900);document.querySelector('#viewport').style.transform=`translate(-50%,-50%) scale(${sc})`;}
+function show(n){slides.forEach(s=>s.classList.remove('active'));i=(n+total)%total;slides[i].classList.add('active');history.replaceState(null,'','#'+(i+1));document.querySelector('#prog span').style.width=((i+1)/total*100)+'%';}
+addEventListener('resize',fit);fit();show(i);
+addEventListener('keydown',e=>{if(['ArrowRight','PageDown',' '].includes(e.key)){e.preventDefault();show(i+1)}if(['ArrowLeft','PageUp','Backspace'].includes(e.key)){e.preventDefault();show(i-1)}});
+addEventListener('click',e=>{if(e.target.closest('a'))return;show(e.clientX>innerWidth/2?i+1:i-1)});
+addEventListener('hashchange',()=>show((parseInt(location.hash.replace('#',''))||1)-1));
+</script>
+</body></html>
