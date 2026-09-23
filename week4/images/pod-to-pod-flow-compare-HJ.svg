@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 540" font-family="'Inter', 'Segoe UI', -apple-system, sans-serif">
+  <defs>
+    <filter id="s"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.12"/></filter>
+    <marker id="ao" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#f39c12"/></marker>
+    <marker id="ag" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#27ae60"/></marker>
+  </defs>
+  <rect width="820" height="540" fill="#f8fafc" rx="12"/>
+  <text x="410" y="34" text-anchor="middle" font-size="18" font-weight="700" fill="#0f172a">같은 ping, 두 번의 여행 — 갈림길은 라우트 조회 한 줄</text>
+
+  <!-- column headers -->
+  <rect x="28" y="52" width="320" height="30" rx="6" fill="#fdf3e3" stroke="#f39c12" stroke-width="1.5"/>
+  <text x="188" y="72" text-anchor="middle" font-size="12.5" font-weight="700" fill="#f39c12">Flannel · VXLAN</text>
+  <rect x="472" y="52" width="320" height="30" rx="6" fill="#eaf7ee" stroke="#27ae60" stroke-width="1.5"/>
+  <text x="632" y="72" text-anchor="middle" font-size="12.5" font-weight="700" fill="#27ae60">Calico · BGP, 캡슐화 없음</text>
+
+  <!-- row 1: Pod eth0 -->
+  <text x="410" y="107" text-anchor="middle" font-size="10" font-weight="700" fill="#64748b">Pod eth0</text>
+  <rect x="28" y="92" width="320" height="42" rx="6" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2" filter="url(#s)"/>
+  <text x="40" y="110" font-size="10.5" fill="#0f172a" font-family="monospace">default via 10.42.0.1</text>
+  <text x="40" y="125" font-size="9.5" fill="#64748b">진짜 있는 게이트웨이 — cni0의 IP</text>
+  <rect x="472" y="92" width="320" height="42" rx="6" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2" filter="url(#s)"/>
+  <text x="484" y="110" font-size="10.5" fill="#0f172a" font-family="monospace">default via 169.254.1.1</text>
+  <text x="484" y="125" font-size="9.5" fill="#64748b">어디에도 없는 주소 — proxy ARP가 대신 답한다</text>
+
+  <!-- row 2: host veth -->
+  <text x="410" y="159" text-anchor="middle" font-size="10" font-weight="700" fill="#64748b">호스트 veth</text>
+  <rect x="28" y="144" width="320" height="42" rx="6" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2" filter="url(#s)"/>
+  <text x="40" y="162" font-size="10.5" fill="#0f172a">veth… — cni0 브릿지의 포트</text>
+  <text x="40" y="177" font-size="9.5" fill="#64748b">브릿지 FDB 조회 → dst MAC이 브릿지 자신 → L3로</text>
+  <rect x="472" y="144" width="320" height="42" rx="6" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2" filter="url(#s)"/>
+  <text x="484" y="162" font-size="10.5" fill="#0f172a">cali… — 브릿지 없음, IP 없음, proxy_arp=1</text>
+  <text x="484" y="177" font-size="9.5" fill="#64748b">L2 처리 없이 바로 L3로</text>
+
+  <!-- row 3: route lookup (the fork) -->
+  <text x="410" y="211" text-anchor="middle" font-size="10" font-weight="700" fill="#2980b9">라우트 조회</text>
+  <text x="410" y="224" text-anchor="middle" font-size="9" fill="#2980b9">← 갈림길 →</text>
+  <rect x="28" y="196" width="320" height="42" rx="6" fill="#eaf2fb" stroke="#2980b9" stroke-width="2" filter="url(#s)"/>
+  <text x="40" y="214" font-size="9.5" font-weight="700" fill="#0f172a" font-family="monospace">10.42.1.0/24 via 10.42.1.0 dev flannel.1 onlink</text>
+  <text x="40" y="229" font-size="9.5" fill="#64748b">flanneld가 annotation을 읽어 정적으로 심은 줄</text>
+  <rect x="472" y="196" width="320" height="42" rx="6" fill="#eaf2fb" stroke="#2980b9" stroke-width="2" filter="url(#s)"/>
+  <text x="484" y="214" font-size="9.5" font-weight="700" fill="#0f172a" font-family="monospace">10.42.1.0/26 via 192.168.1.12 dev eth0 proto bird</text>
+  <text x="484" y="229" font-size="9.5" fill="#64748b">BIRD가 BGP UPDATE로 배워 넣은 줄</text>
+
+  <!-- row 4: next-hop -->
+  <text x="410" y="263" text-anchor="middle" font-size="10" font-weight="700" fill="#64748b">next-hop 해석</text>
+  <rect x="28" y="248" width="320" height="42" rx="6" fill="#fdf3e3" stroke="#f39c12" stroke-width="1.2" filter="url(#s)"/>
+  <text x="40" y="266" font-size="10.5" fill="#0f172a">이웃 테이블 PERMANENT → VTEP MAC</text>
+  <text x="40" y="281" font-size="9.5" fill="#64748b">ARP 요청 없음. 데몬이 미리 답을 박아둠</text>
+  <rect x="472" y="248" width="320" height="42" rx="6" fill="#eaf7ee" stroke="#27ae60" stroke-width="1.2" filter="url(#s)"/>
+  <text x="484" y="266" font-size="10.5" fill="#0f172a">eth0에서 ARP → node-2 NIC MAC</text>
+  <text x="484" y="281" font-size="9.5" fill="#64748b">평범한 ARP. 노드가 같은 L2에 있어야 한다</text>
+
+  <!-- row 5: device -->
+  <text x="410" y="315" text-anchor="middle" font-size="10" font-weight="700" fill="#64748b">송신 장치</text>
+  <rect x="28" y="300" width="320" height="56" rx="6" fill="#fdf3e3" stroke="#f39c12" stroke-width="1.2" filter="url(#s)"/>
+  <text x="40" y="318" font-size="10" fill="#0f172a">flannel.1 → FDB(MAC→노드 IP) → 헤더 3개 → 다시 라우팅 → eth0</text>
+  <text x="40" y="333" font-size="9.5" fill="#64748b">flannel.1에서 tcpdump: Pod IP 보임</text>
+  <text x="40" y="347" font-size="9.5" fill="#f39c12" font-weight="700">eth0에서 tcpdump: 노드 IP + UDP 8472만</text>
+  <rect x="472" y="300" width="320" height="56" rx="6" fill="#eaf7ee" stroke="#27ae60" stroke-width="1.2" filter="url(#s)"/>
+  <text x="484" y="318" font-size="10.5" fill="#0f172a">eth0 직행. 중간 장치 없음</text>
+  <text x="484" y="333" font-size="9.5" fill="#64748b">헤더를 붙이지 않으니 MTU 1500 그대로</text>
+  <text x="484" y="347" font-size="9.5" fill="#27ae60" font-weight="700">eth0에서 tcpdump: Pod IP 그대로</text>
+
+  <!-- row 6: wire -->
+  <text x="410" y="385" text-anchor="middle" font-size="10" font-weight="700" fill="#64748b">와이어</text>
+  <rect x="28" y="366" width="320" height="50" rx="6" fill="#fdf3e3" stroke="#f39c12" stroke-width="1.2" filter="url(#s)"/>
+  <text x="40" y="384" font-size="10" fill="#0f172a" font-family="monospace">[.11→.12][UDP →8472][VNI 1][VTEP MAC][.0.5→.1.7]</text>
+  <text x="40" y="399" font-size="9.5" fill="#64748b">물리망은 노드 IP 사이의 UDP만 본다. Pod 대역을 몰라도 된다</text>
+  <text x="40" y="410" font-size="9" fill="#94a3b8">출발지 포트 해시로 ECMP 분산</text>
+  <rect x="472" y="366" width="320" height="50" rx="6" fill="#eaf7ee" stroke="#27ae60" stroke-width="1.2" filter="url(#s)"/>
+  <text x="484" y="384" font-size="10" fill="#0f172a" font-family="monospace">[node MAC][10.42.0.5 → 10.42.1.7][ICMP]</text>
+  <text x="484" y="399" font-size="9.5" fill="#64748b">물리망이 10.42.1.0/26의 위치를 알아야 한다</text>
+  <text x="484" y="410" font-size="9" fill="#94a3b8">같은 L2거나, ToR가 BGP로 배웠거나</text>
+
+  <!-- row 7: receiver -->
+  <text x="410" y="447" text-anchor="middle" font-size="10" font-weight="700" fill="#64748b">수신 노드</text>
+  <rect x="28" y="426" width="320" height="56" rx="6" fill="#fdf3e3" stroke="#f39c12" stroke-width="1.2" filter="url(#s)"/>
+  <text x="40" y="444" font-size="10" fill="#0f172a">UDP 8472 → vxlan → VNI 1 → flannel.1 → 벗김</text>
+  <text x="40" y="459" font-size="10" fill="#0f172a">→ 라우트 /24 dev cni0 → 브릿지 FDB → veth → Pod</text>
+  <text x="40" y="474" font-size="9.5" fill="#64748b">조회 합계: 라우트 2 · 이웃 1 · FDB 2</text>
+  <rect x="472" y="426" width="320" height="56" rx="6" fill="#eaf7ee" stroke="#27ae60" stroke-width="1.2" filter="url(#s)"/>
+  <text x="484" y="444" font-size="10" fill="#0f172a">dst ≠ 내 IP → ip_forward → 라우트 /32 dev cali…</text>
+  <text x="484" y="459" font-size="10" fill="#0f172a">→ cali에서 Pod MAC ARP → veth → Pod</text>
+  <text x="484" y="474" font-size="9.5" fill="#64748b">조회 합계: 라우트 2 · 이웃 2</text>
+
+  <!-- flow arrows down the middle -->
+  <line x1="188" y1="134" x2="188" y2="144" stroke="#94a3b8" stroke-width="1"/>
+  <line x1="188" y1="186" x2="188" y2="196" stroke="#94a3b8" stroke-width="1"/>
+  <line x1="188" y1="238" x2="188" y2="248" stroke="#f39c12" stroke-width="1.5" marker-end="url(#ao)"/>
+  <line x1="188" y1="290" x2="188" y2="300" stroke="#f39c12" stroke-width="1.5" marker-end="url(#ao)"/>
+  <line x1="188" y1="356" x2="188" y2="366" stroke="#f39c12" stroke-width="1.5" marker-end="url(#ao)"/>
+  <line x1="188" y1="416" x2="188" y2="426" stroke="#f39c12" stroke-width="1.5" marker-end="url(#ao)"/>
+  <line x1="632" y1="134" x2="632" y2="144" stroke="#94a3b8" stroke-width="1"/>
+  <line x1="632" y1="186" x2="632" y2="196" stroke="#94a3b8" stroke-width="1"/>
+  <line x1="632" y1="238" x2="632" y2="248" stroke="#27ae60" stroke-width="1.5" marker-end="url(#ag)"/>
+  <line x1="632" y1="290" x2="632" y2="300" stroke="#27ae60" stroke-width="1.5" marker-end="url(#ag)"/>
+  <line x1="632" y1="356" x2="632" y2="366" stroke="#27ae60" stroke-width="1.5" marker-end="url(#ag)"/>
+  <line x1="632" y1="416" x2="632" y2="426" stroke="#27ae60" stroke-width="1.5" marker-end="url(#ag)"/>
+
+  <text x="410" y="508" text-anchor="middle" font-size="10.5" font-style="italic" fill="#64748b">흰 칸은 두 구현체가 사실상 같은 구간. 파란 한 줄이 갈림길이고, 그 아래가 전부 다르다.</text>
+  <text x="410" y="524" text-anchor="middle" font-size="10.5" font-style="italic" fill="#64748b">처음의 퍼즐: tcpdump 필터는 가장 바깥 헤더만 본다 — Flannel의 eth0에는 Pod IP가 바깥에 없다</text>
+</svg>

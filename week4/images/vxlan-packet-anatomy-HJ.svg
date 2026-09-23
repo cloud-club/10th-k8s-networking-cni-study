@@ -1,0 +1,106 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 400" font-family="'Inter', 'Segoe UI', -apple-system, sans-serif">
+  <defs>
+    <filter id="s"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.12"/></filter>
+  </defs>
+  <rect width="820" height="400" fill="#f8fafc" rx="12"/>
+  <text x="410" y="34" text-anchor="middle" font-size="18" font-weight="700" fill="#0f172a">VXLAN 패킷 해부 — 헤더 한 칸마다 채운 주체가 다르다</text>
+  <text x="410" y="54" text-anchor="middle" font-size="10.5" fill="#64748b">node-1의 eth0에서 나가는 프레임 하나. tcpdump -T vxlan이 보여주는 두 줄이 이 프레임 하나다</text>
+
+  <!-- header strip -->
+  <!-- outer ethernet -->
+  <rect x="28" y="74" width="90" height="64" rx="6" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.5" filter="url(#s)"/>
+  <text x="73" y="98" text-anchor="middle" font-size="11.5" font-weight="700" fill="#0f172a">바깥 Ethernet</text>
+  <text x="73" y="116" text-anchor="middle" font-size="10.5" fill="#64748b">14 B</text>
+  <text x="73" y="130" text-anchor="middle" font-size="9.5" fill="#94a3b8">MTU 계산 밖</text>
+
+  <!-- outer ip -->
+  <rect x="118" y="74" width="110" height="64" rx="6" fill="#fdf3e3" stroke="#f39c12" stroke-width="1.5" filter="url(#s)"/>
+  <text x="173" y="98" text-anchor="middle" font-size="11.5" font-weight="700" fill="#0f172a">바깥 IP</text>
+  <text x="173" y="116" text-anchor="middle" font-size="10.5" fill="#64748b">20 B</text>
+  <text x="173" y="130" text-anchor="middle" font-size="9.5" fill="#94a3b8">protocol 17</text>
+
+  <!-- udp -->
+  <rect x="228" y="74" width="80" height="64" rx="6" fill="#fdf3e3" stroke="#f39c12" stroke-width="1.5" filter="url(#s)"/>
+  <text x="268" y="98" text-anchor="middle" font-size="11.5" font-weight="700" fill="#0f172a">UDP</text>
+  <text x="268" y="116" text-anchor="middle" font-size="10.5" fill="#64748b">8 B</text>
+  <text x="268" y="130" text-anchor="middle" font-size="9.5" fill="#94a3b8">dst 8472</text>
+
+  <!-- vxlan -->
+  <rect x="308" y="74" width="80" height="64" rx="6" fill="#fdf3e3" stroke="#f39c12" stroke-width="1.5" filter="url(#s)"/>
+  <text x="348" y="98" text-anchor="middle" font-size="11.5" font-weight="700" fill="#0f172a">VXLAN</text>
+  <text x="348" y="116" text-anchor="middle" font-size="10.5" fill="#64748b">8 B</text>
+  <text x="348" y="130" text-anchor="middle" font-size="9.5" fill="#94a3b8">flags I · VNI 1</text>
+
+  <!-- inner ethernet -->
+  <rect x="388" y="74" width="90" height="64" rx="6" fill="#fdf3e3" stroke="#f39c12" stroke-width="1.5" filter="url(#s)"/>
+  <text x="433" y="98" text-anchor="middle" font-size="11.5" font-weight="700" fill="#0f172a">안쪽 Ethernet</text>
+  <text x="433" y="116" text-anchor="middle" font-size="10.5" fill="#64748b">14 B</text>
+  <text x="433" y="130" text-anchor="middle" font-size="9.5" fill="#94a3b8">VTEP MAC 끼리</text>
+
+  <!-- inner ip -->
+  <rect x="478" y="74" width="110" height="64" rx="6" fill="#eaf2fb" stroke="#2980b9" stroke-width="1.5" filter="url(#s)"/>
+  <text x="533" y="98" text-anchor="middle" font-size="11.5" font-weight="700" fill="#0f172a">안쪽 IP</text>
+  <text x="533" y="116" text-anchor="middle" font-size="10.5" fill="#64748b">20 B</text>
+  <text x="533" y="130" text-anchor="middle" font-size="9.5" fill="#94a3b8">Pod → Pod</text>
+
+  <!-- payload -->
+  <rect x="588" y="74" width="204" height="64" rx="6" fill="#eaf2fb" stroke="#2980b9" stroke-width="1.5" filter="url(#s)"/>
+  <text x="690" y="98" text-anchor="middle" font-size="11.5" font-weight="700" fill="#0f172a">안쪽 L4 + 데이터</text>
+  <text x="690" y="116" text-anchor="middle" font-size="10.5" fill="#64748b">ICMP echo / TCP …</text>
+  <text x="690" y="130" text-anchor="middle" font-size="9.5" fill="#94a3b8">Pod이 만든 그대로</text>
+
+  <!-- what fills each field -->
+  <text x="73" y="158" text-anchor="middle" font-size="9" fill="#0f172a">노드 MAC → GW MAC</text>
+  <text x="73" y="186" text-anchor="middle" font-size="10" font-weight="700" fill="#64748b">eth0의 ARP</text>
+
+  <text x="173" y="158" text-anchor="middle" font-size="9" fill="#0f172a" font-family="monospace">192.168.1.11</text>
+  <text x="173" y="171" text-anchor="middle" font-size="9" fill="#0f172a" font-family="monospace">→ 192.168.1.12</text>
+  <text x="173" y="186" text-anchor="middle" font-size="10" font-weight="700" fill="#8e44ad">③ FDB의 dst</text>
+
+  <text x="268" y="158" text-anchor="middle" font-size="9" fill="#0f172a">src = 안쪽 해시</text>
+  <text x="268" y="171" text-anchor="middle" font-size="9" fill="#0f172a">dst = 8472</text>
+  <text x="268" y="186" text-anchor="middle" font-size="10" font-weight="700" fill="#f39c12">vxlan 드라이버</text>
+
+  <text x="348" y="158" text-anchor="middle" font-size="9" fill="#0f172a">flannel.1의 .1</text>
+  <text x="348" y="171" text-anchor="middle" font-size="9" fill="#0f172a">클러스터에 하나</text>
+  <text x="348" y="186" text-anchor="middle" font-size="10" font-weight="700" fill="#f39c12">장치 설정</text>
+
+  <text x="433" y="158" text-anchor="middle" font-size="9" fill="#0f172a" font-family="monospace">5e:..:01</text>
+  <text x="433" y="171" text-anchor="middle" font-size="9" fill="#0f172a" font-family="monospace">→ 5e:..:02</text>
+  <text x="433" y="186" text-anchor="middle" font-size="10" font-weight="700" fill="#8e44ad">② 이웃 테이블</text>
+
+  <text x="533" y="158" text-anchor="middle" font-size="9" fill="#0f172a" font-family="monospace">10.42.0.5</text>
+  <text x="533" y="171" text-anchor="middle" font-size="9" fill="#0f172a" font-family="monospace">→ 10.42.1.7</text>
+  <text x="533" y="186" text-anchor="middle" font-size="10" font-weight="700" fill="#2980b9">Pod</text>
+
+  <text x="690" y="158" text-anchor="middle" font-size="9" fill="#0f172a">≤ 1450 − 20 바이트</text>
+  <text x="690" y="186" text-anchor="middle" font-size="10" font-weight="700" fill="#2980b9">Pod</text>
+
+  <!-- brackets -->
+  <path d="M 120 200 L 120 208 L 476 208 L 476 200" fill="none" stroke="#f39c12" stroke-width="1.5"/>
+  <text x="298" y="226" text-anchor="middle" font-size="11" font-weight="700" fill="#f39c12">오버헤드 50 B = 20 + 8 + 8 + 14  →  NIC MTU 1500 − 50 = Pod MTU 1450</text>
+
+  <path d="M 480 200 L 480 208 L 790 208 L 790 200" fill="none" stroke="#2980b9" stroke-width="1.5"/>
+  <text x="635" y="226" text-anchor="middle" font-size="11" font-weight="700" fill="#2980b9">Pod이 만든 IP 패킷 — 최대 1450 B</text>
+
+  <text x="73" y="210" text-anchor="middle" font-size="9.5" fill="#94a3b8">↑ MTU 밖</text>
+
+  <!-- bottom notes -->
+  <rect x="28" y="250" width="372" height="130" rx="8" fill="#ffffff" stroke="#94a3b8" stroke-width="1.2" filter="url(#s)"/>
+  <text x="44" y="272" font-size="11.5" font-weight="700" fill="#0f172a">tcpdump가 두 줄로 보여주는 것</text>
+  <text x="44" y="292" font-size="9.5" fill="#64748b" font-family="monospace">$ tcpdump -ni eth0 -T vxlan udp port 8472</text>
+  <text x="44" y="310" font-size="9.5" fill="#f39c12" font-family="monospace">IP 192.168.1.11.51204 &gt; 192.168.1.12.8472: VXLAN, vni 1</text>
+  <text x="44" y="324" font-size="9.5" fill="#94a3b8">↑ 바깥 IP + UDP + VXLAN. BPF 필터 host &lt;PodIP&gt;는 이것만 본다</text>
+  <text x="44" y="344" font-size="9.5" fill="#2980b9" font-family="monospace">IP 10.42.0.5 &gt; 10.42.1.7: ICMP echo request</text>
+  <text x="44" y="358" font-size="9.5" fill="#94a3b8">↑ 안쪽. -T vxlan이 없으면 해석되지 않는 페이로드</text>
+  <text x="44" y="374" font-size="9.5" fill="#64748b">Linux 기본 포트 8472는 IANA 4789가 아니라 자동 해석이 안 된다</text>
+
+  <rect x="420" y="250" width="372" height="130" rx="8" fill="#ffffff" stroke="#94a3b8" stroke-width="1.2" filter="url(#s)"/>
+  <text x="436" y="272" font-size="11.5" font-weight="700" fill="#0f172a">안쪽 Ethernet이 필요한 이유</text>
+  <text x="436" y="292" font-size="10" fill="#0f172a">VXLAN은 L2 프레임을 감싼다. 그래서 FDB가 <tspan font-weight="700">MAC을 키</tspan>로</text>
+  <text x="436" y="308" font-size="10" fill="#0f172a">바깥 IP(어느 노드로)를 찾는다. 이 MAC이 없으면 목적지 노드를</text>
+  <text x="436" y="324" font-size="10" fill="#0f172a">정할 방법이 없다. 그런데 이 MAC은 <tspan font-weight="700">Pod의 것이 아니다.</tspan></text>
+  <text x="436" y="340" font-size="10" fill="#0f172a">두 노드의 flannel.1 MAC이고, flanneld가 annotation으로 교환한다.</text>
+  <text x="436" y="362" font-size="10" fill="#64748b">Pod의 MAC은 이 여행 어디에도 실리지 않는다.</text>
+  <text x="436" y="376" font-size="10" fill="#64748b">Cilium은 이 VNI 칸에 출발지 Identity를 싣는다 — 같은 칸, 다른 용도</text>
+</svg>

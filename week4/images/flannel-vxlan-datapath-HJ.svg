@@ -1,0 +1,117 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 500" font-family="'Inter', 'Segoe UI', -apple-system, sans-serif">
+  <defs>
+    <filter id="s"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.12"/></filter>
+    <marker id="a" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#2980b9"/></marker>
+    <marker id="ao" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#f39c12"/></marker>
+    <marker id="ap" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#8e44ad"/></marker>
+    <marker id="ag" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#27ae60"/></marker>
+  </defs>
+  <rect width="820" height="500" fill="#f8fafc" rx="12"/>
+  <text x="410" y="34" text-anchor="middle" font-size="18" font-weight="700" fill="#0f172a">Flannel VXLAN — 데몬이 심은 세 줄을 커널이 꺼내 쓰는 순서</text>
+
+  <!-- node-1 -->
+  <rect x="28" y="56" width="364" height="404" rx="10" fill="#ffffff" stroke="#94a3b8" stroke-width="1.5" filter="url(#s)"/>
+  <text x="44" y="78" font-size="12" font-weight="700" fill="#64748b">node-1 <tspan font-family="monospace" font-weight="400">192.168.1.11</tspan> — 송신</text>
+
+  <rect x="48" y="92" width="140" height="44" rx="6" fill="#eaf2fb" stroke="#2980b9" stroke-width="1.5"/>
+  <text x="118" y="110" text-anchor="middle" font-size="11.5" font-weight="700" fill="#0f172a">Pod A 10.42.0.5</text>
+  <text x="118" y="126" text-anchor="middle" font-size="9.5" fill="#64748b" font-family="monospace">default via 10.42.0.1</text>
+
+  <line x1="118" y1="136" x2="118" y2="150" stroke="#2980b9" stroke-width="1.5" marker-end="url(#a)"/>
+
+  <rect x="48" y="150" width="140" height="44" rx="6" fill="#eaf2fb" stroke="#2980b9" stroke-width="1.5"/>
+  <text x="118" y="168" text-anchor="middle" font-size="11.5" font-weight="700" fill="#0f172a">cni0 10.42.0.1</text>
+  <text x="118" y="184" text-anchor="middle" font-size="9.5" fill="#64748b">dst MAC = 자기 것 → L3로</text>
+
+  <line x1="188" y1="172" x2="204" y2="172" stroke="#2980b9" stroke-width="1.5" marker-end="url(#a)"/>
+
+  <rect x="204" y="92" width="172" height="102" rx="6" fill="#eaf2fb" stroke="#2980b9" stroke-width="1.5"/>
+  <text x="290" y="110" text-anchor="middle" font-size="11.5" font-weight="700" fill="#0f172a">① 라우팅 테이블</text>
+  <text x="212" y="130" font-size="9.5" fill="#0f172a" font-family="monospace">10.42.1.0/24</text>
+  <text x="212" y="144" font-size="9.5" fill="#0f172a" font-family="monospace">  via 10.42.1.0</text>
+  <text x="212" y="158" font-size="9.5" fill="#0f172a" font-family="monospace">  dev flannel.1 onlink</text>
+  <text x="212" y="178" font-size="9.5" fill="#64748b">장치와 next-hop을 정한다</text>
+
+  <line x1="290" y1="194" x2="290" y2="210" stroke="#8e44ad" stroke-width="1.5" marker-end="url(#ap)"/>
+
+  <rect x="48" y="210" width="156" height="54" rx="6" fill="#f3ecf8" stroke="#8e44ad" stroke-width="1.5"/>
+  <text x="126" y="228" text-anchor="middle" font-size="11.5" font-weight="700" fill="#0f172a">② 이웃 테이블</text>
+  <text x="126" y="243" text-anchor="middle" font-size="9.5" fill="#0f172a" font-family="monospace">10.42.1.0 → 5e:..:02</text>
+  <text x="126" y="257" text-anchor="middle" font-size="9.5" fill="#64748b">PERMANENT — ARP 안 보냄</text>
+
+  <rect x="220" y="210" width="156" height="54" rx="6" fill="#f3ecf8" stroke="#8e44ad" stroke-width="1.5"/>
+  <text x="298" y="228" text-anchor="middle" font-size="11.5" font-weight="700" fill="#0f172a">③ FDB</text>
+  <text x="298" y="243" text-anchor="middle" font-size="9.5" fill="#0f172a" font-family="monospace">5e:..:02 → dst 192.168.1.12</text>
+  <text x="298" y="257" text-anchor="middle" font-size="9.5" fill="#64748b">그 MAC은 어느 노드인가</text>
+
+  <line x1="126" y1="264" x2="126" y2="278" stroke="#f39c12" stroke-width="1.5" marker-end="url(#ao)"/>
+  <line x1="298" y1="264" x2="298" y2="278" stroke="#f39c12" stroke-width="1.5" marker-end="url(#ao)"/>
+
+  <rect x="48" y="278" width="328" height="72" rx="6" fill="#fdf3e3" stroke="#f39c12" stroke-width="2"/>
+  <text x="212" y="296" text-anchor="middle" font-size="11.5" font-weight="700" fill="#0f172a">④ flannel.1 — vxlan 드라이버 (VNI 1)</text>
+  <text x="60" y="314" font-size="9.5" fill="#0f172a" font-family="monospace">[5e:..:01→5e:..:02][10.42.0.5→10.42.1.7][ICMP]</text>
+  <text x="60" y="328" font-size="9.5" fill="#f39c12" font-family="monospace">+ VXLAN(vni 1) + UDP(hash→8472) + IP(.11→.12)</text>
+  <text x="60" y="342" font-size="9.5" fill="#64748b">안쪽 MAC ②로 FDB ③을 조회해 바깥 IP를 채운다</text>
+
+  <line x1="212" y1="350" x2="212" y2="366" stroke="#f39c12" stroke-width="1.5" marker-end="url(#ao)"/>
+
+  <rect x="48" y="366" width="328" height="44" rx="6" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.5"/>
+  <text x="212" y="384" text-anchor="middle" font-size="11.5" font-weight="700" fill="#0f172a">⑤ eth0 192.168.1.11</text>
+  <text x="212" y="400" text-anchor="middle" font-size="9.5" fill="#64748b">바깥 패킷을 다시 라우팅 → ARP(node-2) → 송신</text>
+
+  <text x="60" y="432" font-size="9.5" fill="#64748b">조회: 라우트 ①, 이웃 ②, FDB ③, 라우트(바깥) ⑤</text>
+  <text x="60" y="448" font-size="9.5" fill="#64748b">flanneld는 ①②③을 노드가 보일 때 미리 심어둔다</text>
+
+
+  <!-- node-2 -->
+  <rect x="428" y="56" width="364" height="404" rx="10" fill="#ffffff" stroke="#94a3b8" stroke-width="1.5" filter="url(#s)"/>
+  <text x="444" y="78" font-size="12" font-weight="700" fill="#64748b">node-2 <tspan font-family="monospace" font-weight="400">192.168.1.12</tspan> — 수신</text>
+
+  <rect x="448" y="92" width="140" height="44" rx="6" fill="#eaf2fb" stroke="#2980b9" stroke-width="1.5"/>
+  <text x="518" y="110" text-anchor="middle" font-size="11.5" font-weight="700" fill="#0f172a">Pod B 10.42.1.7</text>
+  <text x="518" y="126" text-anchor="middle" font-size="9.5" fill="#64748b">veth eth0로 수신</text>
+
+  <line x1="518" y1="150" x2="518" y2="136" stroke="#2980b9" stroke-width="1.5" marker-end="url(#a)"/>
+
+  <rect x="448" y="150" width="140" height="44" rx="6" fill="#eaf2fb" stroke="#2980b9" stroke-width="1.5"/>
+  <text x="518" y="168" text-anchor="middle" font-size="11.5" font-weight="700" fill="#0f172a">⑧ cni0 10.42.1.1</text>
+  <text x="518" y="184" text-anchor="middle" font-size="9.5" fill="#64748b">브릿지 FDB → veth (모르면 플러딩)</text>
+
+  <line x1="604" y1="172" x2="588" y2="172" stroke="#2980b9" stroke-width="1.5" marker-end="url(#a)"/>
+
+  <rect x="604" y="92" width="172" height="102" rx="6" fill="#eaf2fb" stroke="#2980b9" stroke-width="1.5"/>
+  <text x="690" y="110" text-anchor="middle" font-size="11.5" font-weight="700" fill="#0f172a">⑦ 라우팅 테이블</text>
+  <text x="612" y="130" font-size="9.5" fill="#0f172a" font-family="monospace">10.42.1.0/24 dev cni0</text>
+  <text x="612" y="144" font-size="9.5" fill="#0f172a" font-family="monospace">  proto kernel scope link</text>
+  <text x="612" y="158" font-size="9.5" fill="#0f172a" font-family="monospace">  src 10.42.1.1</text>
+  <text x="612" y="178" font-size="9.5" fill="#64748b">여기부터는 Week 1 그림</text>
+
+  <line x1="768" y1="278" x2="768" y2="194" stroke="#2980b9" stroke-width="1.5" marker-end="url(#a)"/>
+
+  <rect x="448" y="206" width="310" height="62" rx="6" fill="#fff7f7" stroke="#e74c3c" stroke-width="1.2" stroke-dasharray="4 3"/>
+  <text x="603" y="220" text-anchor="middle" font-size="10" font-weight="700" fill="#e74c3c">세 줄 중 하나가 없으면</text>
+  <text x="458" y="234" font-size="9" fill="#0f172a">라우트 ① 없음 → flannel.1에 들어가지도 않는다</text>
+  <text x="458" y="247" font-size="9" fill="#0f172a">이웃 ② 없음 → ARP 타임아웃 → Destination Host Unreachable</text>
+  <text x="458" y="260" font-size="9" fill="#0f172a">FDB ③ 없음 → 멀티캐스트 그룹이 없어 조용히 폐기</text>
+
+  <rect x="448" y="278" width="328" height="72" rx="6" fill="#fdf3e3" stroke="#f39c12" stroke-width="2"/>
+  <text x="612" y="296" text-anchor="middle" font-size="11.5" font-weight="700" fill="#0f172a">⑥ flannel.1 — 벗기기</text>
+  <text x="460" y="314" font-size="9.5" fill="#0f172a">UDP 8472 소켓 → vxlan 드라이버 → VNI 1 → flannel.1 장치</text>
+  <text x="460" y="328" font-size="9.5" fill="#0f172a">바깥 IP · UDP · VXLAN 헤더 제거, 안쪽 프레임을 수신한 것처럼 올림</text>
+  <text x="460" y="342" font-size="9.5" fill="#64748b">안쪽 dst MAC 5e:..:02 = 내 flannel.1 → L3 스택으로</text>
+
+  <line x1="612" y1="366" x2="612" y2="350" stroke="#f39c12" stroke-width="1.5" marker-end="url(#ao)"/>
+
+  <rect x="448" y="366" width="328" height="44" rx="6" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.5"/>
+  <text x="612" y="384" text-anchor="middle" font-size="11.5" font-weight="700" fill="#0f172a">eth0 192.168.1.12</text>
+  <text x="612" y="400" text-anchor="middle" font-size="9.5" fill="#64748b">tcpdump host 10.42.1.7 → 0 packets. 바깥 헤더에 Pod IP가 없다</text>
+
+  <text x="460" y="432" font-size="9.5" fill="#64748b">조회: vxlan 수신 ⑥, 라우트 ⑦, 브릿지 FDB ⑧</text>
+  <text x="460" y="448" font-size="9.5" fill="#64748b">tcpdump -ni flannel.1 host 10.42.1.7 은 잡힌다 — 벗긴 뒤 지점</text>
+
+  <text x="410" y="484" text-anchor="middle" font-size="10.5" font-style="italic" fill="#64748b">노드 사이 구간의 조회는 라우트 2 · 이웃 1 · FDB 2(vxlan, 브릿지). 전부 Week 1의 자료구조고, 새로운 것은 vxlan 드라이버가 끼어 헤더를 붙이고 떼는 것뿐이다</text>
+  <!-- wire (drawn last so node boxes do not cover the labels) -->
+  <line x1="376" y1="388" x2="448" y2="388" stroke="#f39c12" stroke-width="2.5" marker-end="url(#ao)"/>
+  <text x="412" y="376" text-anchor="middle" font-size="8.5" font-weight="700" fill="#f39c12">UDP 8472</text>
+  <text x="412" y="404" text-anchor="middle" font-size="8" fill="#94a3b8">.11 → .12</text>
+</svg>
