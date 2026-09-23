@@ -466,4 +466,5 @@ ip route show | grep flannel.1                      # Flannel: 노드 오브젝�
 - [Kubernetes — Network Policies](https://kubernetes.io/docs/concepts/services-networking/network-policies/), [Kubernetes — Node status and heartbeats](https://kubernetes.io/docs/reference/node/node-status/)
 - [Cilium — Encapsulation and the VNI field](https://docs.cilium.io/en/stable/network/concepts/routing/#encapsulation), [Cilium — Socket-based load balancing](https://docs.cilium.io/en/stable/network/kubernetes/kubeproxy-free/#socket-loadbalancer-bypass-in-pod-namespace)
 - [tcpdump(1) — `-T vxlan`](https://www.tcpdump.org/manpages/tcpdump.1.html)
+- 발표에서 함께 언급한 비교 대상 — [MetalLB의 L2 모드와 BGP 모드 (KANS 5주차)](https://hackjsp.tistory.com/65#BGP%20Mode-1): Flannel host-gw/VXLAN과 Calico BGP의 대비가 MetalLB의 L2 모드와 BGP 모드의 대비와 같은 구조다. [HAProxy 개념 및 구성 가이드](https://somaz.tistory.com/298)
 - 직접 정리한 글 — [쿠버네티스 네트워크의 본질: CNI, VXLAN, 그리고 Pod는 어떻게 통신하는가](https://marsboy02.github.io/ko/posts/kubernetes-cni-networking/)
