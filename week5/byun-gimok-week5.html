@@ -312,7 +312,7 @@
       <p>Fortigate로 비유하면, iptables는 정책이 수만 줄인 방화벽에서 위에서부터 한 줄씩 매칭하는 것과 같다. Service가 많아질수록 느려지고, 변경할 때마다 정책 전체를 다시 밀어 넣는다.</p>
 
       <h3>네트워크 Hook 위치</h3>
-      <p>Week 1에서 본 Netfilter Hook과 같은 축에 놓고 보면, eBPF Hook은 Netfilter보다 <strong>앞</strong>에 있거나, 패킷이 생기기도 <strong>전</strong>에 있다.</p>
+      <p>Week 1에서 본 Netfilter Hook과 같은 축에 놓고 보면, 수신 쪽 eBPF Hook(XDP, tc ingress)은 Netfilter보다 <strong>앞</strong>에 있고, 소켓 Hook은 패킷이 생기기도 <strong>전</strong>에 있다. 송신 쪽 tc egress는 POSTROUTING 다음, NIC로 나가기 직전에 실행된다.</p>
 
       <div class="flow" role="img" aria-label="eBPF Hook과 Netfilter Hook의 위치 비교">
         <svg viewBox="0 0 940 330" xmlns="http://www.w3.org/2000/svg" font-family="Pretendard, 'Noto Sans KR', 'Malgun Gothic', sans-serif">
@@ -446,7 +446,7 @@
         <li><strong>같은 Node의 Pod끼리:</strong> <code>bpf_lxc</code>가 목적지가 같은 Node의 Pod인 것을 확인하면, 정책을 검사한 뒤 목적지 Pod 쪽으로 바로 redirect한다. Netfilter를 거치지 않는다.</li>
         <li><strong>다른 Node로:</strong> 터널 모드는 <code>cilium_vxlan</code>으로 캡슐화하고, 네이티브 라우팅 모드는 언더레이가 Pod CIDR을 알고 있어야 한다(기본 경로 라우터 또는 BGP, <code>auto-direct-node-routes</code>). Week 4의 Overlay와 Underlay 비교와 같은 선택지다.</li>
         <li><strong>L7 정책이 있으면:</strong> 패킷이 Node의 Envoy 프록시를 한 번 거친다. L7 정책이 없으면 프록시를 거치지 않는다.</li>
-        <li><strong>최신 커널:</strong> 커널 5.10 이상에서는 BPF Host Routing으로 커널 라우팅 단계까지 건너뛰고 eBPF가 NIC로 바로 보낼 수 있다. 오래된 자료(Cilium 1.8, 커널 4.19 기준)의 그림보다 경로가 더 짧다.</li>
+        <li><strong>BPF Host Routing:</strong> 커널이 지원하고 eBPF kube-proxy replacement와 eBPF masquerade(<code>bpf.masquerade=true</code>)를 함께 쓰면 자동으로 켜진다(<code>cilium-dbg status</code>의 <code>Host Routing: BPF</code>). 이때는 호스트의 상위 네트워크 스택과 Netfilter를 건너뛰고 eBPF가 NIC로 바로 보낸다. 오래된 자료(Cilium 1.8, 커널 4.19 기준)의 그림보다 경로가 더 짧다.</li>
       </ul>
 
       <div class="question">
@@ -457,6 +457,7 @@
       <div class="refs">
         <p>참고: <a href="https://docs.cilium.io/en/stable/network/ebpf/lifeofapacket/">Cilium Docs - Life of a Packet</a></p>
         <p>참고: <a href="https://docs.cilium.io/en/stable/network/concepts/routing/">Cilium Docs - Routing (Encapsulation / Native-Routing)</a></p>
+        <p>참고: <a href="https://docs.cilium.io/en/stable/operations/performance/tuning/">Cilium Docs - Tuning Guide (eBPF Host-Routing)</a></p>
         <p>참고: <a href="https://arthurchiao.art/blog/cilium-life-of-a-packet-pod-to-service/">Arthur Chiao - Life of a Packet in Cilium: Pod-to-Service</a></p>
       </div>
     </section>
@@ -615,7 +616,7 @@ hubble observe --to-pod shop/db-5f6b9c --follow
 
 # 출력 예시 (형식 설명용)
 Oct  1 05:12:03.123: shop/web-7d9c:51234 (ID:12345) -&gt; shop/db-5f6b:3306 (ID:23456) policy-verdict:L3-L4 INGRESS ALLOWED (TCP Flags: SYN)
-Oct  1 05:12:09.456: shop/batch-6c1a:40022 (ID:34567) -&gt; shop/db-5f6b:3306 (ID:23456) Policy denied DROPPED (TCP Flags: SYN)</code></pre>
+Oct  1 05:12:09.456: shop/batch-6c1a:40022 (ID:34567) &lt;&gt; shop/db-5f6b:3306 (ID:23456) Policy denied DROPPED (TCP Flags: SYN)</code></pre>
 
       <p class="legacy"><strong>기존 인프라 비유</strong> Fortigate의 <code>diagnose debug flow</code>는 "이 패킷이 몇 번 정책에 걸려서 허용/차단됐다"를 보여준다. Hubble은 이것을 <strong>클러스터의 모든 Node에서 항상</strong> 수집하고, IP 대신 Pod 이름과 Identity로 보여준다. Pod IP가 계속 바뀌는 환경에서는 IP로 찍힌 로그만으로는 누가 보냈는지 알 수 없기 때문에 이 차이가 중요하다.</p>
 
@@ -634,9 +635,9 @@ Oct  1 05:12:09.456: shop/batch-6c1a:40022 (ID:34567) -&gt; shop/db-5f6b:3306 (I
         <ul>
           <li><strong>XDP:</strong> NIC 드라이버 단계. skb가 만들어지기 전이라 가장 빠르다. NodePort 가속, 대량 DROP에 쓴다.</li>
           <li><strong>tc ingress / egress:</strong> 각 인터페이스(<code>lxc</code>, <code>eth0</code>, <code>cilium_host</code>, <code>cilium_vxlan</code>)에 붙는다. Cilium의 메인 datapath로 정책, NAT, 라우팅, 캡슐화를 처리한다.</li>
-          <li><strong>cgroup socket hook:</strong> <code>connect()</code>/<code>sendmsg()</code> 시스템 콜 시점. 패킷이 생기기도 전에 ClusterIP를 Backend IP로 바꾼다(Socket-LB).</li>
+          <li><strong>cgroup socket hook:</strong> <code>connect()</code>/<code>sendmsg()</code>/<code>recvmsg()</code> 시스템 콜 시점. 패킷이 생기기도 전에 ClusterIP를 Backend IP로 바꾼다(Socket-LB).</li>
         </ul>
-        <p>세 위치 모두 Netfilter(iptables)보다 앞에 있거나 아예 패킷이 생기기 전이다. 그래서 Cilium 트래픽은 대부분 iptables를 거치지 않고 처리가 끝난다. (그림 2)</p>
+        <p>XDP와 tc ingress는 수신 경로에서 Netfilter보다 앞이고, 소켓 Hook은 패킷이 생기기 전이며, tc egress는 송신 경로의 마지막(POSTROUTING 뒤)이다. 정책 판정과 Service 변환이 이 지점들에서 끝나기 때문에(BPF Host Routing을 쓰면 호스트의 Netfilter도 우회), Cilium 트래픽은 대부분 iptables 규칙의 영향을 받지 않는다. (그림 2)</p>
       </div>
 
       <div class="answer">
@@ -701,7 +702,7 @@ Oct  1 05:12:09.456: shop/batch-6c1a:40022 (ID:34567) -&gt; shop/db-5f6b:3306 (I
         <p><strong>토론 1.</strong> 중앙 방화벽(Fortigate) 구조와 비교해서, 정책이 모든 Node에 분산되는 Cilium 구조의 장점과 운영상 걱정되는 점은 무엇일까? (예: 장점은 병목과 우회 경로가 없다는 것, 걱정은 보안팀이 정책을 어디서 감사하느냐는 것)</p>
       </div>
       <div class="question">
-        <p><strong>토론 2.</strong> 커널 버전에 따라 쓸 수 있는 기능(BPF Host Routing은 5.10 이상 등)이 달라진다. 사내 서버의 OS와 커널 표준이 Cilium 도입에 어떤 제약이 될까?</p>
+        <p><strong>토론 2.</strong> 커널 버전에 따라 쓸 수 있는 기능(BPF Host Routing은 커널 지원과 함께 kube-proxy replacement·eBPF masquerade가 필요한 것 등)이 달라진다. 사내 서버의 OS와 커널 표준이 Cilium 도입에 어떤 제약이 될까?</p>
       </div>
       <div class="question">
         <p><strong>토론 3.</strong> iptables가 거의 쓰이지 않는 환경에서 장애가 나면, 기존에 쓰던 <code>iptables-save</code>, <code>tcpdump</code> 대신 무엇을 봐야 할까? (Week 8 Troubleshooting과 연결)</p>
@@ -719,7 +720,7 @@ Oct  1 05:12:09.456: shop/batch-6c1a:40022 (ID:34567) -&gt; shop/db-5f6b:3306 (I
         <li><a href="https://docs.cilium.io/en/stable/security/network/identity/">Cilium Docs - Identity-Based Security</a></li>
         <li><a href="https://docs.cilium.io/en/stable/observability/hubble/">Cilium Docs - Hubble</a></li>
         <li><a href="https://arthurchiao.art/blog/cilium-life-of-a-packet-pod-to-service/">Arthur Chiao - Life of a Packet in Cilium (Cilium 1.8 / 커널 4.19 기준)</a></li>
-        <li><a href="https://isovalent.com/books/learning-ebpf/">Liz Rice - Learning eBPF / What is eBPF? (Isovalent)</a></li>
+        <li><a href="https://github.com/lizrice/learning-ebpf">Liz Rice - Learning eBPF (예제 코드 저장소)</a></li>
         <li><a href="https://on.com2us.com/tech/ebpf-xdp-deep-dive/">컴투스 기술블로그 - 컨테이너 환경에서의 eBPF/XDP 로드밸런서 Deep Dive</a></li>
       </ul>
     </section>
