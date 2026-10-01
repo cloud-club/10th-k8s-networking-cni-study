@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 520" font-family="'Inter', 'Segoe UI', -apple-system, sans-serif">
+  <defs>
+    <filter id="s"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.12"/></filter>
+    <marker id="a" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#94a3b8"/></marker>
+    <marker id="ab" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#2980b9"/></marker>
+    <marker id="ap" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#8e44ad"/></marker>
+  </defs>
+  <rect width="820" height="520" fill="#f8fafc" rx="12"/>
+  <text x="410" y="34" text-anchor="middle" font-size="18" font-weight="700" fill="#0f172a">DNAT가 일어나는 자리 — 패킷 단계에서 시스템콜 단계로</text>
+
+  <!-- column headers -->
+  <rect x="28" y="54" width="370" height="28" rx="6" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.5"/>
+  <text x="213" y="73" text-anchor="middle" font-size="12" font-weight="700" fill="#475569">kube-proxy iptables (Week 2)</text>
+  <rect x="422" y="54" width="370" height="28" rx="6" fill="#eaf2fb" stroke="#2980b9" stroke-width="1.5"/>
+  <text x="607" y="73" text-anchor="middle" font-size="12" font-weight="700" fill="#2980b9">Cilium 소켓 LB</text>
+
+  <!-- row 1: app -->
+    <rect x="28" y="92" width="370" height="40" rx="6" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2" filter="url(#s)"/>
+  <text x="40" y="110" font-size="10.5" fill="#0f172a" font-family="monospace">connect(10.96.45.10:80)</text>
+  <text x="40" y="125" font-size="9.5" fill="#64748b">커널은 그대로 ClusterIP로 SYN을 만든다</text>
+  <rect x="422" y="92" width="370" height="40" rx="6" fill="#eaf2fb" stroke="#2980b9" stroke-width="2" filter="url(#s)"/>
+  <text x="434" y="110" font-size="10.5" fill="#0f172a" font-family="monospace">connect(10.96.45.10:80) → cil_sock4_connect</text>
+  <text x="434" y="125" font-size="9.5" fill="#2980b9" font-weight="700">lb 맵 조회 → 소켓 목적지를 10.42.1.7:80으로 바꾼다. 패킷은 아직 없다</text>
+
+  <!-- row 2: pod eth0 -->
+    <rect x="28" y="144" width="370" height="40" rx="6" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2" filter="url(#s)"/>
+  <text x="40" y="162" font-size="10.5" fill="#0f172a" font-family="monospace">Pod eth0: 10.42.0.5 → 10.96.45.10</text>
+  <text x="40" y="177" font-size="9.5" fill="#64748b">tcpdump host &lt;ClusterIP&gt; 에 잡힌다</text>
+  <rect x="422" y="144" width="370" height="40" rx="6" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2" filter="url(#s)"/>
+  <text x="434" y="162" font-size="10.5" fill="#0f172a" font-family="monospace">Pod eth0: 10.42.0.5 → 10.42.1.7</text>
+  <text x="434" y="177" font-size="9.5" fill="#2980b9" font-weight="700">처음의 퍼즐: Pod 자신의 eth0에도 ClusterIP가 없다</text>
+
+  <!-- row 3: host -->
+    <rect x="28" y="196" width="370" height="56" rx="6" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.2" filter="url(#s)"/>
+  <text x="40" y="214" font-size="10" fill="#0f172a">호스트 PREROUTING nat: KUBE-SVC-* → KUBE-SEP-*</text>
+  <text x="40" y="229" font-size="10" fill="#0f172a">DNAT → 10.42.1.7:80, <tspan font-weight="700">conntrack에 변환 기록</tspan></text>
+  <text x="40" y="244" font-size="9.5" fill="#64748b">첫 패킷만 체인 스캔, 이후 패킷은 conntrack 조회</text>
+  <rect x="422" y="196" width="370" height="56" rx="6" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2" filter="url(#s)"/>
+  <text x="434" y="214" font-size="10" fill="#0f172a">호스트 lxc tc ingress — 평범한 Pod-to-Pod 패킷으로 처리</text>
+  <text x="434" y="229" font-size="10" fill="#0f172a">변환할 것이 없다 → <tspan font-weight="700">conntrack에 아무것도 없다</tspan></text>
+  <text x="434" y="244" font-size="9.5" fill="#64748b">연결당 비용 한 번. 이후 패킷은 Service를 모른다</text>
+
+  <!-- row 4: reply -->
+    <rect x="28" y="264" width="370" height="40" rx="6" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.2" filter="url(#s)"/>
+  <text x="40" y="282" font-size="10" fill="#0f172a">응답 .1.7 → .0.5: conntrack이 출발지를 ClusterIP로 되돌림</text>
+  <text x="40" y="297" font-size="9.5" fill="#64748b">Week 1: "conntrack이 없으면 주소 변환은 성립하지 않는다"</text>
+  <rect x="422" y="264" width="370" height="40" rx="6" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2" filter="url(#s)"/>
+  <text x="434" y="282" font-size="10" fill="#0f172a">응답 10.42.1.7 → 10.42.0.5 가 그대로 소켓에 도착. 되돌릴 것이 없다</text>
+  <text x="434" y="297" font-size="9.5" fill="#64748b">변환을 패킷 밖으로 옮겨 그 전제를 피해 간다</text>
+
+  <!-- row 5: getpeername -->
+    <rect x="28" y="316" width="370" height="40" rx="6" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2" filter="url(#s)"/>
+  <text x="40" y="334" font-size="10" fill="#0f172a">getpeername(): 소켓이 원래 ClusterIP에 붙어 있으니 그냥 ClusterIP</text>
+  <text x="40" y="349" font-size="9.5" fill="#64748b">ss 도 ClusterIP</text>
+  <rect x="422" y="316" width="370" height="40" rx="6" fill="#eaf2fb" stroke="#2980b9" stroke-width="2" filter="url(#s)"/>
+  <text x="434" y="334" font-size="10" fill="#0f172a">getpeername(): <tspan font-family="monospace">cil_sock4_getpeername</tspan>이 가로채 ClusterIP를 돌려줌</text>
+  <text x="434" y="349" font-size="9.5" fill="#2980b9" font-weight="700">앱 로그는 ClusterIP, ss 는 Pod IP — 같은 소켓에 두 답</text>
+
+  <!-- second net: packets without a socket -->
+  <rect x="28" y="376" width="764" height="118" rx="8" fill="#f3ecf8" stroke="#8e44ad" stroke-width="1.5" filter="url(#s)"/>
+  <text x="44" y="396" font-size="11.5" font-weight="700" fill="#8e44ad">두 번째 그물 — 소켓이 없는 패킷은 tc / XDP에서 패킷 DNAT</text>
+  <rect x="44" y="408" width="236" height="74" rx="6" fill="#ffffff" stroke="#8e44ad" stroke-width="1.2"/>
+  <text x="162" y="426" text-anchor="middle" font-size="10.5" font-weight="700" fill="#0f172a">클러스터 밖 → NodePort</text>
+  <text x="162" y="441" text-anchor="middle" font-size="9.5" fill="#64748b">eth0 tc ingress cil_from_netdev (또는 XDP)</text>
+  <text x="162" y="456" text-anchor="middle" font-size="9.5" fill="#64748b">같은 lb 맵으로 헤더 DNAT</text>
+  <text x="162" y="471" text-anchor="middle" font-size="9.5" fill="#64748b">다른 노드 백엔드: SNAT(기본) 또는 DSR</text>
+  <rect x="292" y="408" width="236" height="74" rx="6" fill="#ffffff" stroke="#8e44ad" stroke-width="1.2"/>
+  <text x="410" y="426" text-anchor="middle" font-size="10.5" font-weight="700" fill="#0f172a">hostNetwork Pod · 노드 프로세스</text>
+  <text x="410" y="441" text-anchor="middle" font-size="9.5" fill="#64748b">루트 cgroup 소속 → 기본은 소켓 훅에 걸린다</text>
+  <text x="410" y="456" text-anchor="middle" font-size="9.5" fill="#64748b">bpf-lb-sock-hostns-only 면 제외되고</text>
+  <text x="410" y="471" text-anchor="middle" font-size="9.5" fill="#64748b">cilium_host 의 tc에서 bpf_host가 DNAT</text>
+  <rect x="540" y="408" width="236" height="74" rx="6" fill="#ffffff" stroke="#8e44ad" stroke-width="1.2"/>
+  <text x="658" y="426" text-anchor="middle" font-size="10.5" font-weight="700" fill="#0f172a">UDP</text>
+  <text x="658" y="441" text-anchor="middle" font-size="9.5" fill="#64748b">connect() 없이 sendto() 가능</text>
+  <text x="658" y="456" text-anchor="middle" font-size="9.5" fill="#64748b">cil_sock4_sendmsg 가 매 호출 변환</text>
+  <text x="658" y="471" text-anchor="middle" font-size="9.5" fill="#64748b">cil_sock4_recvmsg 가 출발지를 되돌림</text>
+
+  <text x="410" y="511" text-anchor="middle" font-size="10.5" font-style="italic" fill="#64748b">소켓 LB가 잡으면 패킷에 Service가 남지 않고, 못 잡으면 tc가 패킷을 고친다. 어느 쪽이든 Netfilter는 없다</text>
+</svg>
