@@ -126,7 +126,7 @@ tc ingress의 위치가 핵심이다. 호스트 쪽 veth의 tc ingress는 **Pod�
 
 *출처: [Cilium — Life of a Packet](https://docs.cilium.io/en/stable/network/ebpf/lifeofapacket/)*
 
-같은 노드의 두 Pod 사이다. 왼쪽 Endpoint를 나온 패킷은 **TC @ Endpoint(`bpf_lxc`)**에 잡히고, 아래의 실선을 따라 **오른쪽 Endpoint의 `bpf_lxc`로 바로** 간다. 그림에서 `PREROUTING`, `FORWARD`, `POSTROUTING`은 전부 **점선 상자 안**, 즉 L7 정책을 켰을 때만 지나는 선택 경로에 있다. Netfilter가 기본 경로에서 빠져 있다는 뜻이다. 처음 퍼즐에서 `conntrack -L`이 비어 있던 이유의 절반이 여기 있다. 패킷이 Netfilter를 지나지 않았으니 커널 conntrack이 볼 기회가 없었다.
+같은 노드의 두 Pod 사이다. 왼쪽 Endpoint를 나온 패킷은 **TC @ Endpoint**(`bpf_lxc`)에 잡히고, 아래의 실선을 따라 **오른쪽 Endpoint의 `bpf_lxc`로 바로** 간다. 그림에서 `PREROUTING`, `FORWARD`, `POSTROUTING`은 전부 **점선 상자 안**, 즉 L7 정책을 켰을 때만 지나는 선택 경로에 있다. Netfilter가 기본 경로에서 빠져 있다는 뜻이다. 처음 퍼즐에서 `conntrack -L`이 비어 있던 이유의 절반이 여기 있다. 패킷이 Netfilter를 지나지 않았으니 커널 conntrack이 볼 기회가 없었다.
 
 ---
 
@@ -176,7 +176,7 @@ node-1의 Pod A(`10.42.0.5`)가 node-2의 Pod B(`10.42.1.7`)로 보내는 패킷
 
 ![Endpoint에서 나가는 데이터패스 (Cilium 공식 문서)](./images/cilium-official-datapath-egress.svg)
 
-나가는 쪽이다. 왼쪽 Pod level enforcement에서 `bpf_lxc`가 egress 정책을 보고, 패킷은 **TC @ cilium_host(`bpf_host`)**를 거쳐 NIC으로 간다. 오른쪽 점선 상자 Overlay mode가 터널 모드다. 켜져 있으면 NIC 직전에 **Encapsulate, Route**가 끼어들어 VXLAN으로 감싼다. 꺼져 있으면(native routing) 그대로 NIC으로 나간다. Week 4의 Flannel 자리와 Calico 자리가 **점선 상자 하나의 유무**로 그려져 있다. 위의 L7 policy와 아래의 L3 encryption도 전부 점선, 즉 켰을 때만 지나는 길이다.
+나가는 쪽이다. 왼쪽 Pod level enforcement에서 `bpf_lxc`가 egress 정책을 보고, 패킷은 **TC @ cilium_host**(`bpf_host`)를 거쳐 NIC으로 간다. 오른쪽 점선 상자 Overlay mode가 터널 모드다. 켜져 있으면 NIC 직전에 **Encapsulate, Route**가 끼어들어 VXLAN으로 감싼다. 꺼져 있으면(native routing) 그대로 NIC으로 나간다. Week 4의 Flannel 자리와 Calico 자리가 **점선 상자 하나의 유무**로 그려져 있다. 위의 L7 policy와 아래의 L3 encryption도 전부 점선, 즉 켰을 때만 지나는 길이다.
 
 ![Endpoint로 들어오는 데이터패스 (Cilium 공식 문서)](./images/cilium-official-datapath-ingress.svg)
 
@@ -263,7 +263,7 @@ L7 정책(HTTP 경로, DNS 이름)도 있다. eBPF는 패킷 하나를 보지 HT
 
 *출처: [Cilium — Hubble Internals](https://docs.cilium.io/en/stable/internals/hubble/)*
 
-공식 그림은 에이전트 안의 Hubble 서버를 아래에서 위로 읽는다. **Cilium Monitor(5)**가 데이터패스의 perf 버퍼를 읽고, Monitor Listener(4)가 그것을 Observer(3)에 넘기고, Observer가 플로우로 가공해 Ring Buffer(2)에 쌓고 Metrics(6)도 뽑는다. 밖에서 `GetFlows` 요청이 오면 gRPC Service(1)가 링 버퍼를 읽어 돌려준다. Relay는 이 gRPC를 모든 노드에 대해 묶는 것이다.
+공식 그림은 에이전트 안의 Hubble 서버를 아래에서 위로 읽는다. **Cilium Monitor**(5)가 데이터패스의 perf 버퍼를 읽고, Monitor Listener(4)가 그것을 Observer(3)에 넘기고, Observer가 플로우로 가공해 Ring Buffer(2)에 쌓고 Metrics(6)도 뽑는다. 밖에서 `GetFlows` 요청이 오면 gRPC Service(1)가 링 버퍼를 읽어 돌려준다. Relay는 이 gRPC를 모든 노드에 대해 묶는 것이다.
 
 데이터패스 프로그램은 패킷을 처리하는 요소요소에서 이벤트를 perf 버퍼에 쓴다. 앞의 ebpf.io 그림에서 본 `perf_submit`이다. 어느 Identity에서 어느 Identity로 가는 패킷을 어느 지점에서 봤는지, 정책 판정이 무엇이었는지, 드롭했다면 이유가 무엇인지. 에이전트에 내장된 Hubble Server가 이 버퍼를 읽어 플로우로 만들고, Relay가 모든 노드를 묶고, CLI와 UI가 거기 붙는다.
 
