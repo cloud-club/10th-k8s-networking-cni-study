@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Week 5. Cilium & eBPF - Byun gimok</title>
+  <style>
+    :root {
+      --bg: #f5f6f7;
+      --paper: #ffffff;
+      --text: #20252b;
+      --muted: #65717c;
+      --line: #d8dee4;
+      --soft: #f0f4f7;
+      --blue: #245d7c;
+      --green: #2d6a4f;
+      --orange: #9a5a13;
+      --code-bg: #17212a;
+      --code-text: #edf2f5;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #10161b;
+        --paper: #172027;
+        --text: #edf1f4;
+        --muted: #aeb9c1;
+        --line: #34434e;
+        --soft: #202d35;
+        --blue: #79b7d7;
+        --green: #86c6a4;
+        --orange: #e3aa62;
+        --code-bg: #0b1115;
+        --code-text: #edf2f5;
+      }
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Pretendard", "Noto Sans KR", "Malgun Gothic", system-ui, sans-serif;
+      line-height: 1.75;
+      word-break: keep-all;
+      overflow-wrap: break-word;
+    }
+    a { color: var(--blue); text-underline-offset: 3px; overflow-wrap: anywhere; }
+    .wrap { width: min(1000px, calc(100% - 32px)); margin: 0 auto; }
+    header { padding: 64px 0 34px; border-bottom: 1px solid var(--line); background: var(--paper); }
+    .week { margin: 0 0 8px; color: var(--blue); font-size: .9rem; font-weight: 700; }
+    h1 { margin: 0; font-size: clamp(2rem, 5vw, 3.5rem); line-height: 1.15; letter-spacing: -.04em; }
+    .intro { max-width: 760px; margin: 20px 0 0; color: var(--muted); font-size: 1.05rem; }
+    .author { margin-top: 22px; font-size: .92rem; color: var(--muted); }
+    nav { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--paper) 94%, transparent); border-bottom: 1px solid var(--line); backdrop-filter: blur(10px); }
+    nav .wrap { display: flex; gap: 6px; overflow-x: auto; padding-top: 10px; padding-bottom: 10px; }
+    nav a { flex: 0 0 auto; padding: 7px 10px; border-radius: 6px; color: var(--text); font-size: .86rem; text-decoration: none; }
+    nav a:hover { background: var(--soft); }
+    main { padding: 34px 0 80px; }
+    section { margin-bottom: 22px; padding: clamp(24px, 5vw, 48px); border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
+    h2 { margin: 0 0 24px; color: var(--blue); font-size: clamp(1.5rem, 3vw, 2rem); line-height: 1.3; letter-spacing: -.025em; }
+    h3 { margin: 30px 0 10px; font-size: 1.15rem; }
+    p { margin: 10px 0; }
+    ul, ol { padding-left: 1.4rem; }
+    li { margin: 7px 0; }
+    .note { margin: 20px 0; padding: 15px 18px; border-left: 4px solid var(--blue); background: var(--soft); }
+    .legacy { margin: 20px 0; padding: 15px 18px; border-left: 4px solid var(--orange); background: var(--soft); }
+    .legacy strong:first-child { color: var(--orange); }
+    .question { margin: 18px 0 0; padding: 16px 18px; border: 1px solid var(--line); border-radius: 8px; background: var(--soft); }
+    .question p { margin: 5px 0; }
+    .question strong { color: var(--orange); }
+    .table-wrap { overflow-x: auto; margin: 16px 0; }
+    table { width: 100%; border-collapse: collapse; font-size: .94rem; }
+    th, td { padding: 11px 12px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { background: var(--soft); color: var(--blue); white-space: nowrap; }
+    td code { overflow-wrap: anywhere; }
+    code { font-family: "Cascadia Code", Consolas, monospace; font-size: .9em; }
+    pre { overflow-x: auto; margin: 18px 0; padding: 18px; border-radius: 8px; background: var(--code-bg); color: var(--code-text); line-height: 1.55; }
+    .flow { overflow-x: auto; margin: 20px 0; padding: 18px; border: 1px solid var(--line); border-radius: 10px; background: #f8fafb; }
+    .flow svg { display: block; width: 100%; min-width: 820px; height: auto; }
+    .caption { margin: -8px 0 18px; color: var(--muted); font-size: .86rem; text-align: center; }
+    .answer { margin: 18px 0; padding: 18px 20px; border: 1px solid var(--line); border-left: 4px solid var(--green); border-radius: 8px; background: var(--soft); }
+    .answer h3 { margin-top: 0; color: var(--green); }
+    .refs { margin-top: 28px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: .88rem; }
+    .refs p { margin: 5px 0; }
+    footer { padding: 30px 0 50px; color: var(--muted); text-align: center; font-size: .86rem; }
+    @media (max-width: 600px) {
+      .wrap { width: min(100% - 18px, 1000px); }
+      header { padding: 38px 0 25px; }
+      section { padding: 24px 18px; }
+      table { font-size: .84rem; }
+      th, td { padding: 9px 8px; }
+    }
+    @media print {
+      :root { --bg: white; --paper: white; --text: #111; --muted: #444; --line: #bbb; --soft: #f2f4f5; --blue: #245d7c; }
+      body { background: white; font-size: 10.5pt; }
+      .wrap { width: 100%; }
+      nav { display: none; }
+      section { break-inside: avoid; }
+      a { color: inherit; text-decoration: none; }
+      .flow { overflow: visible; }
+      .flow svg { min-width: 0; }
+      * { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <p class="week">10th Kubernetes Networking CNI Study · Week 5</p>
+      <h1>Cilium &amp; eBPF</h1>
+      <p class="intro">이번 주에는 Cilium을 중심으로 eBPF 기반 네트워킹을 정리한다. 기존 인프라(방화벽, L3 스위치, L4 로드밸런서)만 다뤄 본 입장에서 이해할 수 있도록, 각 개념을 기존 장비의 어떤 기능에 해당하는지 대응시키면서 설명한다. 정리의 큰 줄기는 kt cloud 기술블로그의 Cilium 소개 글을 따랐다.</p>
+      <p class="author">Byun gimok</p>
+    </div>
+  </header>
+
+  <nav aria-label="학습 포인트">
+    <div class="wrap">
+      <a href="#why">0. 왜 Cilium인가</a>
+      <a href="#arch">1. Cilium Architecture</a>
+      <a href="#ebpf">2. eBPF 기본 개념 / Hook</a>
+      <a href="#datapath">3. Cilium Datapath</a>
+      <a href="#kpr">4. kube-proxy Replacement</a>
+      <a href="#identity">5. NetworkPolicy / Identity</a>
+      <a href="#hubble">6. Hubble</a>
+      <a href="#summary">정리 과제</a>
+      <a href="#questions">질문</a>
+    </div>
+  </nav>
+
+  <main class="wrap">
+    <!-- 0 -->
+    <section id="why">
+      <h2>0. 들어가기 전에: Cilium은 왜 필요한가</h2>
+
+      <h3>용어 4개를 기존 인프라에 대응시키기</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Kubernetes 용어</th><th>기존 인프라로 치면</th></tr></thead>
+        <tbody>
+          <tr><td>Node</td><td>물리 서버 또는 VM 한 대</td></tr>
+          <tr><td>Pod</td><td>그 서버 위에서 돌아가는 앱 하나. 각자 자기 IP를 가진다. 서버 안에 작은 VM이 여러 개 있다고 생각하면 된다.</td></tr>
+          <tr><td>Service</td><td>여러 Pod 앞에 있는 VIP. NetScaler의 VIP와 같은 개념이다.</td></tr>
+          <tr><td>Kubernetes</td><td>어느 서버에 어떤 Pod를 띄울지 정하고 관리하는 중앙 관리자</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>기존 인프라와 Kubernetes의 차이</h3>
+      <p><strong>기존 인프라에서는</strong></p>
+      <ul>
+        <li>서버는 한 번 만들면 몇 년 동안 그대로 있다. IP도 고정이다.</li>
+        <li>그래서 IP를 기준으로 Fortigate 정책을 만들고, 스위치 포트를 할당하고, NetScaler에 VIP를 등록하면 끝이다. 변경이 생기면 사람이 작업 요청서를 받아서 처리한다.</li>
+      </ul>
+      <p><strong>Kubernetes에서는</strong></p>
+      <ul>
+        <li>Pod가 하루에도 수십, 수백 번 생겼다가 없어진다. 다시 뜰 때마다 IP가 바뀐다.</li>
+        <li>이걸 사람이 매번 방화벽 정책, 라우팅, LB 멤버에 반영하는 건 불가능하다.</li>
+      </ul>
+      <p>그래서 Pod가 생기는 순간 자동으로 IP를 주고, 선을 꽂고, 라우팅을 잡고, LB 멤버에 넣고, 방화벽 정책까지 적용하는 소프트웨어가 필요하다. 이 역할을 하는 플러그인을 CNI라고 부르고, Cilium은 CNI 중 하나다. (Week 4의 Flannel, Calico도 같은 종류다.)</p>
+
+      <h3>한 줄 정의</h3>
+      <p class="note"><strong>Cilium</strong> = 모든 Node의 Linux 커널 안에 설치되는 "소프트웨어 스위치 + 라우터 + L4 로드밸런서 + 방화벽 + 트래픽 모니터". 이 기능들을 iptables가 아니라 <strong>eBPF</strong>로 구현한다. 2023년 CNCF 졸업(Graduated) 프로젝트가 되었다.</p>
+
+      <div class="table-wrap"><table>
+        <thead><tr><th>기존 장비 / 작업</th><th>Cilium에서는</th><th>이 문서의 섹션</th></tr></thead>
+        <tbody>
+          <tr><td>스위치 포트에 서버 케이블 꽂기</td><td>Pod를 커널에 연결 (가상 케이블 <code>veth</code>)</td><td>3. Datapath</td></tr>
+          <tr><td>L3 스위치 / 라우터</td><td>Node 간 Pod 트래픽 라우팅 (필요하면 VXLAN 터널)</td><td>3. Datapath</td></tr>
+          <tr><td>NetScaler VIP → 멤버 분산</td><td>Service VIP → Pod로 분산</td><td>4. kube-proxy Replacement</td></tr>
+          <tr><td>Fortigate 방화벽 정책</td><td>NetworkPolicy (Pod 간 허용/차단)</td><td>5. NetworkPolicy / Identity</td></tr>
+          <tr><td>FortiView, 로그, 패킷 캡처</td><td>Hubble (누가 누구와 통신했는지, 왜 차단됐는지)</td><td>6. Hubble</td></tr>
+          <tr><td>IP 할당 (DHCP, IP 관리 대장)</td><td>IPAM (Pod IP 자동 할당)</td><td>1. Architecture</td></tr>
+        </tbody>
+      </table></div>
+
+      <div class="refs">
+        <p>참고: <a href="https://tech.ktcloud.com/entry/eBPF-%EA%B8%B0%EB%B0%98%EC%9D%98-%EA%B0%95%EB%A0%A5%ED%95%9C-%EC%BF%A0%EB%B2%84%EB%84%A4%ED%8B%B0%EC%8A%A4-%EB%84%A4%ED%8A%B8%EC%9B%8C%ED%82%B9-Cilium-CNI-%EC%86%8C%EA%B0%9C">kt cloud 기술블로그 - eBPF 기반의 강력한 쿠버네티스 네트워킹: Cilium CNI 소개</a></p>
+        <p>참고: <a href="https://docs.cilium.io/en/stable/overview/intro/">Cilium Docs - Introduction to Cilium &amp; Hubble</a></p>
+      </div>
+    </section>
+
+    <!-- 1 -->
+    <section id="arch">
+      <h2>1. Cilium Architecture</h2>
+      <p>Cilium 구조는 네트워크 엔지니어에게 익숙한 <strong>Control Plane / Data Plane 분리</strong>로 보면 가장 이해하기 쉽다.</p>
+      <ul>
+        <li><strong>Control Plane (유저스페이스):</strong> Kubernetes에서 Pod, Service, 정책 정보를 받아서 "무엇을 할지" 정한다.</li>
+        <li><strong>Data Plane (커널):</strong> 각 Pod의 인터페이스와 Node NIC에 붙은 eBPF 프로그램이 실제 패킷을 처리한다.</li>
+      </ul>
+
+      <div class="flow" role="img" aria-label="Cilium Control Plane과 Data Plane 구조">
+        <svg viewBox="0 0 940 400" xmlns="http://www.w3.org/2000/svg" font-family="Pretendard, 'Noto Sans KR', 'Malgun Gothic', sans-serif">
+          <defs>
+            <marker id="arrA" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#245d7c"/></marker>
+          </defs>
+          <rect x="18" y="14" width="904" height="150" rx="16" fill="#e8f1f7" stroke="#9fbdd0"/>
+          <text x="40" y="42" fill="#245d7c" font-size="15" font-weight="700">Control Plane (유저스페이스) ≈ Fortigate 관리 / FortiManager</text>
+          <rect x="40" y="62" width="190" height="78" rx="10" fill="#fff" stroke="#8a99a6"/>
+          <text x="135" y="94" text-anchor="middle" fill="#253746" font-size="14" font-weight="700">Kubernetes API</text>
+          <text x="135" y="118" text-anchor="middle" fill="#52616b" font-size="12">Pod · Service · Policy 정보</text>
+          <rect x="300" y="62" width="220" height="78" rx="10" fill="#fff" stroke="#245d7c" stroke-width="2"/>
+          <text x="410" y="92" text-anchor="middle" fill="#245d7c" font-size="15" font-weight="700">cilium-agent</text>
+          <text x="410" y="114" text-anchor="middle" fill="#52616b" font-size="12">Node마다 1개 (DaemonSet)</text>
+          <text x="410" y="131" text-anchor="middle" fill="#52616b" font-size="12">BPF 로드 · Map 갱신 · Hubble 서버</text>
+          <rect x="580" y="62" width="150" height="78" rx="10" fill="#fff" stroke="#8a99a6"/>
+          <text x="655" y="96" text-anchor="middle" fill="#253746" font-size="14" font-weight="700">cilium-operator</text>
+          <text x="655" y="118" text-anchor="middle" fill="#52616b" font-size="12">클러스터 단위 IPAM 등</text>
+          <rect x="752" y="62" width="150" height="78" rx="10" fill="#fff" stroke="#8a99a6"/>
+          <text x="827" y="96" text-anchor="middle" fill="#253746" font-size="14" font-weight="700">hubble-relay / UI</text>
+          <text x="827" y="118" text-anchor="middle" fill="#52616b" font-size="12">전체 Node flow 수집</text>
+          <path d="M230 101 H298" stroke="#245d7c" stroke-width="2.5" marker-end="url(#arrA)"/>
+          <path d="M410 140 V212" stroke="#245d7c" stroke-width="3" marker-end="url(#arrA)"/>
+          <text x="422" y="186" fill="#245d7c" font-size="13" font-weight="700">BPF 프로그램 로드 · Map 값 갱신</text>
+          <text x="422" y="203" fill="#52616b" font-size="12">≈ 정책을 ASIC/NP에 내려보내기</text>
+          <rect x="18" y="218" width="904" height="168" rx="16" fill="#fbf4ea" stroke="#d6b88f"/>
+          <text x="40" y="246" fill="#9a5a13" font-size="15" font-weight="700">Data Plane (커널) ≈ 포트마다 붙은 방화벽 + LB 엔진</text>
+          <rect x="40" y="262" width="150" height="40" rx="20" fill="#fff1df" stroke="#9a5a13"/>
+          <text x="115" y="287" text-anchor="middle" fill="#75420d" font-size="13" font-weight="700">BPF (bpf_host)</text>
+          <rect x="60" y="324" width="110" height="44" rx="8" fill="#def0e6" stroke="#2d6a4f"/>
+          <text x="115" y="351" text-anchor="middle" fill="#24533d" font-size="14" font-weight="700">eth0 (NIC)</text>
+          <rect x="230" y="262" width="150" height="40" rx="20" fill="#fff1df" stroke="#9a5a13"/>
+          <text x="305" y="287" text-anchor="middle" fill="#75420d" font-size="13" font-weight="700">BPF (bpf_lxc)</text>
+          <rect x="250" y="324" width="110" height="44" rx="8" fill="#e3f0f6" stroke="#245d7c"/>
+          <text x="305" y="351" text-anchor="middle" fill="#253746" font-size="14" font-weight="700">Pod A</text>
+          <rect x="420" y="262" width="150" height="40" rx="20" fill="#fff1df" stroke="#9a5a13"/>
+          <text x="495" y="287" text-anchor="middle" fill="#75420d" font-size="13" font-weight="700">BPF (bpf_lxc)</text>
+          <rect x="440" y="324" width="110" height="44" rx="8" fill="#e3f0f6" stroke="#245d7c"/>
+          <text x="495" y="351" text-anchor="middle" fill="#253746" font-size="14" font-weight="700">Pod B</text>
+          <path d="M115 302 V324 M305 302 V324 M495 302 V324" stroke="#9a5a13" stroke-width="2"/>
+          <path d="M680 270 a70 14 0 0 0 140 0 a70 14 0 0 0 -140 0 V350 a70 14 0 0 0 140 0 V270" fill="#fff" stroke="#9a5a13" stroke-width="2"/>
+          <text x="750" y="310" text-anchor="middle" fill="#75420d" font-size="15" font-weight="700">BPF Maps</text>
+          <text x="750" y="330" text-anchor="middle" fill="#52616b" font-size="12">Service · 정책</text>
+          <text x="750" y="346" text-anchor="middle" fill="#52616b" font-size="12">CT · identity</text>
+          <path d="M570 282 H676" stroke="#9a5a13" stroke-width="2" stroke-dasharray="5 4"/>
+          <text x="623" y="275" text-anchor="middle" fill="#9a5a13" font-size="11">패킷마다 조회</text>
+        </svg>
+      </div>
+      <p class="caption">그림 1. Cilium의 Control Plane / Data Plane. 원본 개념도: Cilium Docs Component Overview</p>
+
+      <h3>컴포넌트</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>컴포넌트</th><th>배포 형태</th><th>하는 일</th><th>기존 인프라 비유</th></tr></thead>
+        <tbody>
+          <tr><td><code>cilium-agent</code></td><td>DaemonSet (Node마다)</td><td>Kubernetes API를 감시하고, eBPF 프로그램을 로드하고 Map을 갱신한다. Hubble 서버가 내장돼 있다.</td><td>각 장비의 관리 데몬</td></tr>
+          <tr><td><code>cilium-operator</code></td><td>Deployment</td><td>클러스터 단위 작업(IPAM 등)을 한다. 잠깐 멈춰도 기존 패킷 전달에는 영향이 없다.</td><td>중앙 IP 관리 시스템</td></tr>
+          <tr><td><code>cilium-cni</code></td><td>Node의 바이너리</td><td>kubelet이 Pod를 만들 때 호출하는 CNI 플러그인이다. Week 2에서 본 CRI → CNI 호출 흐름의 그 지점이다.</td><td>케이블을 꽂는 작업자</td></tr>
+          <tr><td><code>cilium-dbg</code></td><td>agent Pod 안의 CLI</td><td>agent 상태와 BPF Map 내용을 조회한다.</td><td><code>get</code> / <code>diagnose</code> 명령</td></tr>
+          <tr><td><code>hubble-relay</code>, <code>hubble-ui</code></td><td>Deployment</td><td>Node별 Hubble 데이터를 모아서 클러스터 전체 flow와 서비스 맵을 보여준다.</td><td>FortiAnalyzer / FortiView</td></tr>
+        </tbody>
+      </table></div>
+
+      <p class="legacy"><strong>기존 인프라 관점</strong> 기존 구조에서는 모든 트래픽이 중앙의 Fortigate와 NetScaler를 거친다. Cilium에는 중앙 장비가 없고, <strong>모든 Pod의 "포트"마다 작은 방화벽 + LB가 붙어 있다.</strong> 트래픽이 중앙 장비까지 갔다 오지 않고, 보내는 Node의 커널 안에서 정책 판단과 VIP 변환이 끝난다.</p>
+
+      <div class="question">
+        <p><strong>질문 1.</strong> cilium-agent Pod가 재시작되는 동안 기존 Pod끼리의 통신은 끊길까?</p>
+        <p>끊기지 않는다. 패킷을 처리하는 것은 커널에 이미 붙어 있는 eBPF 프로그램과 Map이고, agent는 그 내용을 관리할 뿐이다. 재시작하는 동안에는 새 Pod, 새 정책, Service 변경이 반영되지 않는다. Fortigate 관리 화면이 멈춰도 이미 내려간 정책으로 트래픽이 계속 처리되는 것과 같다.</p>
+      </div>
+
+      <div class="refs">
+        <p>참고: <a href="https://docs.cilium.io/en/stable/overview/component-overview/">Cilium Docs - Component Overview</a></p>
+      </div>
+    </section>
+
+    <!-- 2 -->
+    <section id="ebpf">
+      <h2>2. eBPF 기본 개념 및 Hook</h2>
+
+      <h3>eBPF란</h3>
+      <p>eBPF(extended Berkeley Packet Filter)는 <strong>커널을 다시 컴파일하거나 커널 모듈을 넣지 않고, 커널 안의 정해진 지점(Hook)에 검증된 작은 프로그램을 붙여서 실행하는 기술</strong>이다. 1992년에 만들어진 BPF(패킷 필터)를 확장한 것이고, 커널 안의 작은 가상 머신에서 실행된다.</p>
+
+      <p class="legacy"><strong>기존 인프라 비유: eBPF ≈ "Linux 커널용 iRule / NetScaler 정책"</strong> NetScaler에서는 Responder나 Rewrite 정책을 <em>바인드 포인트</em>에 붙이고, F5에서는 iRule을 <code>HTTP_REQUEST</code> 같은 이벤트에 붙인다. 장비 펌웨어를 바꾸지 않고도 정해진 지점에 내가 만든 로직을 끼워 넣는 방식이다. eBPF는 이 방식을 Linux 커널에 적용한 것이다.</p>
+
+      <div class="table-wrap"><table>
+        <thead><tr><th>NetScaler / F5</th><th>eBPF</th></tr></thead>
+        <tbody>
+          <tr><td>장비 펌웨어</td><td>Linux 커널</td></tr>
+          <tr><td>정책 바인드 포인트 / iRule 이벤트</td><td><strong>Hook</strong> (패킷 수신 시점, 송신 시점, <code>connect()</code> 호출 시점 등)</td></tr>
+          <tr><td>Responder 정책 / iRule 스크립트</td><td><strong>eBPF 프로그램</strong></td></tr>
+          <tr><td>정책 저장 시 문법 검사</td><td><strong>Verifier</strong>. 훨씬 엄격해서, 무한 루프나 범위 밖 메모리 접근처럼 커널이 죽을 수 있는 코드는 아예 거부한다.</td></tr>
+          <tr><td>Data Group / String Map</td><td><strong>eBPF Map</strong> (커널과 유저스페이스가 함께 쓰는 key-value 테이블)</td></tr>
+        </tbody>
+      </table></div>
+
+      <p>eBPF가 없을 때는 커널에 기능을 추가하려면 커널 개발 커뮤니티에 반영되기를 몇 년 기다리거나(벤더 펌웨어 업데이트를 기다리는 것과 같다), 커널 모듈을 직접 넣어야 했다(검증 안 된 서드파티 드라이버를 설치하는 것과 같아서, 잘못되면 서버가 다운된다). eBPF는 그 사이에 있는 <strong>안전한 확장 슬롯</strong>이다.</p>
+
+      <h3>프로그램이 커널에 들어가는 과정</h3>
+      <pre><code>C 코드 ──clang/LLVM──▶ BPF 바이트코드
+                          │ bpf() 시스템 콜로 로드
+                          ▼
+                   Verifier (안전성 검사) ── 실패하면 거부
+                          │ 통과
+                          ▼
+                   JIT 컴파일 (네이티브 기계어)
+                          │
+                          ▼
+                   Hook에 attach → 이벤트(패킷 등)마다 실행
+                          ⇅
+                   eBPF Map ⇄ 유저스페이스 (cilium-agent)</code></pre>
+
+      <p>핵심은 <strong>로직은 커널 안의 프로그램이 처리하고, 규칙의 내용은 유저스페이스가 Map에 써 넣는다</strong>는 점이다. Service나 정책이 바뀌어도 프로그램을 다시 로드하지 않고 Map 엔트리만 바꾸면 된다.</p>
+
+      <h3>iptables의 한계 (kt cloud 글의 정리)</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>항목</th><th>iptables</th><th>Cilium + eBPF</th></tr></thead>
+        <tbody>
+          <tr><td>기술 기반</td><td>Netfilter 체인</td><td>eBPF Hook</td></tr>
+          <tr><td>규칙 조회</td><td>규칙을 위에서부터 순서대로 검사 (O(n))</td><td>Map 해시 조회 (Service가 늘어도 거의 일정)</td></tr>
+          <tr><td>규칙 변경</td><td>하나만 바꿔도 전체 규칙을 다시 생성하고 갱신</td><td>Map 엔트리 하나만 갱신</td></tr>
+          <tr><td>프로토콜 인식</td><td>L3/L4 (IP, Port)</td><td>L3/L4 + L7 (L7은 Envoy 프록시와 함께)</td></tr>
+          <tr><td>kube-proxy</td><td>필요</td><td>대체 가능 (4장)</td></tr>
+        </tbody>
+      </table></div>
+      <p>Fortigate로 비유하면, iptables는 정책이 수만 줄인 방화벽에서 위에서부터 한 줄씩 매칭하는 것과 같다. Service가 많아질수록 느려지고, 변경할 때마다 정책 전체를 다시 밀어 넣는다.</p>
+
+      <h3>네트워크 Hook 위치</h3>
+      <p>Week 1에서 본 Netfilter Hook과 같은 축에 놓고 보면, eBPF Hook은 Netfilter보다 <strong>앞</strong>에 있거나, 패킷이 생기기도 <strong>전</strong>에 있다.</p>
+
+      <div class="flow" role="img" aria-label="eBPF Hook과 Netfilter Hook의 위치 비교">
+        <svg viewBox="0 0 940 330" xmlns="http://www.w3.org/2000/svg" font-family="Pretendard, 'Noto Sans KR', 'Malgun Gothic', sans-serif">
+          <defs>
+            <marker id="arrB" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#245d7c"/></marker>
+          </defs>
+          <rect x="18" y="14" width="904" height="72" rx="12" fill="#e8f1f7" stroke="#9fbdd0"/>
+          <text x="36" y="40" fill="#245d7c" font-size="13" font-weight="700">유저스페이스</text>
+          <rect x="150" y="28" width="200" height="44" rx="8" fill="#fff" stroke="#8a99a6"/>
+          <text x="250" y="55" text-anchor="middle" fill="#253746" font-size="13">앱: connect() / sendmsg()</text>
+          <rect x="400" y="28" width="250" height="44" rx="22" fill="#fff1df" stroke="#9a5a13" stroke-width="2"/>
+          <text x="525" y="49" text-anchor="middle" fill="#75420d" font-size="13" font-weight="700">④ cgroup socket hook</text>
+          <text x="525" y="65" text-anchor="middle" fill="#75420d" font-size="11">패킷이 생기기 전 · Socket-LB</text>
+          <path d="M350 50 H398" stroke="#245d7c" stroke-width="2" marker-end="url(#arrB)"/>
+          <text x="36" y="118" fill="#52616b" font-size="13" font-weight="700">커널 수신 경로 →</text>
+          <rect x="30" y="134" width="80" height="46" rx="8" fill="#def0e6" stroke="#2d6a4f"/>
+          <text x="70" y="162" text-anchor="middle" fill="#24533d" font-size="14" font-weight="700">NIC</text>
+          <rect x="130" y="128" width="120" height="58" rx="29" fill="#fff1df" stroke="#9a5a13" stroke-width="2"/>
+          <text x="190" y="152" text-anchor="middle" fill="#75420d" font-size="14" font-weight="700">① XDP</text>
+          <text x="190" y="170" text-anchor="middle" fill="#75420d" font-size="11">드라이버 · skb 이전</text>
+          <rect x="270" y="134" width="90" height="46" rx="8" fill="#fff" stroke="#8a99a6"/>
+          <text x="315" y="162" text-anchor="middle" fill="#253746" font-size="13">skb 할당</text>
+          <rect x="380" y="128" width="130" height="58" rx="29" fill="#fff1df" stroke="#9a5a13" stroke-width="2"/>
+          <text x="445" y="152" text-anchor="middle" fill="#75420d" font-size="14" font-weight="700">② tc ingress</text>
+          <text x="445" y="170" text-anchor="middle" fill="#75420d" font-size="11">Cilium 메인 datapath</text>
+          <rect x="530" y="128" width="380" height="58" rx="8" fill="#eceff1" stroke="#8a99a6" stroke-dasharray="6 4"/>
+          <text x="720" y="152" text-anchor="middle" fill="#253746" font-size="13" font-weight="700">Netfilter: PREROUTING → 라우팅 → INPUT / FORWARD</text>
+          <text x="720" y="172" text-anchor="middle" fill="#52616b" font-size="12">iptables · kube-proxy가 동작하는 곳</text>
+          <path d="M110 157 H128 M250 157 H268 M360 157 H378 M510 157 H528" stroke="#245d7c" stroke-width="2"/>
+          <text x="36" y="232" fill="#52616b" font-size="13" font-weight="700">커널 송신 경로 →</text>
+          <rect x="30" y="248" width="380" height="58" rx="8" fill="#eceff1" stroke="#8a99a6" stroke-dasharray="6 4"/>
+          <text x="220" y="272" text-anchor="middle" fill="#253746" font-size="13" font-weight="700">Netfilter: OUTPUT / FORWARD → POSTROUTING</text>
+          <text x="220" y="292" text-anchor="middle" fill="#52616b" font-size="12">SNAT 등</text>
+          <rect x="440" y="248" width="140" height="58" rx="29" fill="#fff1df" stroke="#9a5a13" stroke-width="2"/>
+          <text x="510" y="272" text-anchor="middle" fill="#75420d" font-size="14" font-weight="700">③ tc egress</text>
+          <text x="510" y="290" text-anchor="middle" fill="#75420d" font-size="11">NIC로 나가기 직전</text>
+          <rect x="610" y="254" width="80" height="46" rx="8" fill="#def0e6" stroke="#2d6a4f"/>
+          <text x="650" y="282" text-anchor="middle" fill="#24533d" font-size="14" font-weight="700">NIC</text>
+          <path d="M410 277 H438" stroke="#245d7c" stroke-width="2" marker-end="url(#arrB)"/>
+          <path d="M580 277 H608" stroke="#245d7c" stroke-width="2" marker-end="url(#arrB)"/>
+          <rect x="720" y="236" width="190" height="80" rx="8" fill="#fff" stroke="#d8dee4"/>
+          <rect x="734" y="252" width="22" height="14" rx="7" fill="#fff1df" stroke="#9a5a13"/>
+          <text x="764" y="264" fill="#253746" font-size="12">eBPF Hook</text>
+          <rect x="734" y="280" width="22" height="14" rx="2" fill="#eceff1" stroke="#8a99a6" stroke-dasharray="3 2"/>
+          <text x="764" y="292" fill="#253746" font-size="12">Netfilter (iptables)</text>
+        </svg>
+      </div>
+      <p class="caption">그림 2. eBPF Hook(주황)과 Netfilter Hook(회색)의 위치. 수신 패킷은 XDP → tc ingress를 지난 뒤에 Netfilter에 도달한다.</p>
+
+      <div class="table-wrap"><table>
+        <thead><tr><th>Hook</th><th>위치</th><th>Cilium에서의 용도</th></tr></thead>
+        <tbody>
+          <tr><td>① XDP</td><td>NIC 드라이버. 커널이 패킷 구조체(skb)를 만들기도 전</td><td>NodePort 로드밸런싱 가속, 대량 DROP(prefilter)</td></tr>
+          <tr><td>② / ③ tc (ingress / egress)</td><td>각 인터페이스(veth, eth0, cilium_host, cilium_vxlan)</td><td><strong>메인 datapath.</strong> 정책, NAT, 라우팅, 캡슐화 대부분</td></tr>
+          <tr><td>④ cgroup socket hook</td><td><code>connect()</code>, <code>sendmsg()</code>, <code>recvmsg()</code> 시스템 콜</td><td><strong>Socket-LB.</strong> ClusterIP를 연결 시점에 바로 Pod IP로 바꾼다.</td></tr>
+          <tr><td>sockops / sockmap</td><td>소켓 레이어</td><td>같은 Node 소켓 간 데이터 전달 최적화 등</td></tr>
+        </tbody>
+      </table></div>
+
+      <div class="question">
+        <p><strong>질문 2.</strong> Cilium이 Service 규칙을 바꿀 때 eBPF 프로그램을 다시 로드하지 않아도 되는 이유는?</p>
+        <p>규칙의 내용(VIP → Backend 목록 등)이 프로그램이 아니라 Map에 들어 있기 때문이다. 프로그램은 "Map을 조회해서 그 결과대로 처리하라"는 로직만 갖고 있다. agent가 Map 엔트리만 바꾸면 바로 다음 패킷부터 새 규칙이 적용된다.</p>
+      </div>
+
+      <div class="refs">
+        <p>참고: <a href="https://ebpf.io/ko-kr/what-is-ebpf/">ebpf.io - eBPF란 무엇인가 (한국어)</a></p>
+        <p>참고: <a href="https://tech.ktcloud.com/entry/eBPF-%EA%B8%B0%EB%B0%98%EC%9D%98-%EA%B0%95%EB%A0%A5%ED%95%9C-%EC%BF%A0%EB%B2%84%EB%84%A4%ED%8B%B0%EC%8A%A4-%EB%84%A4%ED%8A%B8%EC%9B%8C%ED%82%B9-Cilium-CNI-%EC%86%8C%EA%B0%9C">kt cloud 기술블로그 - Cilium CNI 소개</a></p>
+        <p>참고: <a href="https://docs.cilium.io/en/stable/network/ebpf/maps/">Cilium Docs - eBPF Maps</a></p>
+      </div>
+    </section>
+
+    <!-- 3 -->
+    <section id="datapath">
+      <h2>3. Cilium Datapath</h2>
+      <p>Datapath는 "패킷이 실제로 어떤 인터페이스와 어떤 eBPF 프로그램을 거쳐 가는가"이다.</p>
+
+      <h3>Node 안의 인터페이스</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>인터페이스</th><th>역할</th><th>붙는 eBPF 프로그램</th><th>기존 인프라 비유</th></tr></thead>
+        <tbody>
+          <tr><td><code>lxcXXXX</code></td><td>Pod veth의 호스트 쪽 끝. Pod마다 하나</td><td><code>bpf_lxc</code></td><td>스위치 포트 + 포트별 ACL</td></tr>
+          <tr><td><code>cilium_host</code> / <code>cilium_net</code></td><td>서로 연결된 veth 쌍. <code>cilium_host</code>의 IP가 Pod들의 기본 게이트웨이</td><td><code>bpf_host</code></td><td>SVI (VLAN 인터페이스, 게이트웨이)</td></tr>
+          <tr><td><code>cilium_vxlan</code></td><td>터널 모드에서 Node 간 VXLAN 캡슐화 (UDP 8472). Geneve(UDP 6081)도 선택 가능</td><td><code>bpf_overlay</code></td><td>VTEP</td></tr>
+          <tr><td><code>eth0</code></td><td>Node의 물리 NIC</td><td><code>bpf_host</code></td><td>업링크 포트</td></tr>
+        </tbody>
+      </table></div>
+
+      <p class="note">Week 4의 Flannel은 <code>cni0</code> 브리지에 모든 Pod를 연결했다. Cilium에는 <strong>L2 브리지가 없다.</strong> 각 <code>lxc</code>에 붙은 eBPF 프로그램과 라우팅이 패킷을 목적지로 바로 보낸다. 스위치 없이 포트마다 라우팅과 ACL을 하는 구조라고 보면 된다.</p>
+
+      <h3>Pod → Service → 다른 Node의 Pod</h3>
+      <div class="flow" role="img" aria-label="Pod에서 Service를 거쳐 다른 Node의 Pod로 가는 Cilium 패킷 흐름">
+        <svg viewBox="0 0 940 380" xmlns="http://www.w3.org/2000/svg" font-family="Pretendard, 'Noto Sans KR', 'Malgun Gothic', sans-serif">
+          <defs>
+            <marker id="arrC" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#245d7c"/></marker>
+          </defs>
+          <rect x="18" y="14" width="420" height="300" rx="16" fill="#eef3f6" stroke="#aebbc4"/>
+          <text x="38" y="42" fill="#253746" font-size="15" font-weight="700">Node 1</text>
+          <rect x="502" y="14" width="420" height="300" rx="16" fill="#eef3f6" stroke="#aebbc4"/>
+          <text x="522" y="42" fill="#253746" font-size="15" font-weight="700">Node 2</text>
+          <rect x="40" y="58" width="150" height="62" rx="10" fill="#fff" stroke="#245d7c" stroke-width="2"/>
+          <text x="115" y="84" text-anchor="middle" fill="#253746" font-size="14" font-weight="700">Pod A</text>
+          <text x="115" y="104" text-anchor="middle" fill="#52616b" font-size="11">curl ServiceIP:80</text>
+          <rect x="40" y="150" width="380" height="70" rx="10" fill="#fff1df" stroke="#9a5a13" stroke-width="2"/>
+          <text x="56" y="172" fill="#75420d" font-size="13" font-weight="700">lxcA · bpf_lxc</text>
+          <text x="56" y="192" fill="#253746" font-size="12">① Service LB: Backend 선택, DNAT (ServiceIP → Pod B IP)</text>
+          <text x="56" y="210" fill="#253746" font-size="12">② egress 정책 검사 · 목적지가 다른 Node인지 판단</text>
+          <rect x="40" y="244" width="380" height="54" rx="10" fill="#fff1df" stroke="#9a5a13"/>
+          <text x="56" y="266" fill="#75420d" font-size="13" font-weight="700">cilium_vxlan / eth0</text>
+          <text x="56" y="286" fill="#253746" font-size="12">③ 터널: VXLAN 캡슐화(+출발지 identity) / 네이티브: 라우팅</text>
+          <path d="M115 120 V148" stroke="#245d7c" stroke-width="2.5" marker-end="url(#arrC)"/>
+          <path d="M230 220 V242" stroke="#245d7c" stroke-width="2.5" marker-end="url(#arrC)"/>
+          <rect x="740" y="58" width="160" height="62" rx="10" fill="#fff" stroke="#245d7c" stroke-width="2"/>
+          <text x="820" y="84" text-anchor="middle" fill="#253746" font-size="14" font-weight="700">Pod B</text>
+          <text x="820" y="104" text-anchor="middle" fill="#52616b" font-size="11">⑥ 도착</text>
+          <rect x="520" y="150" width="380" height="70" rx="10" fill="#fff1df" stroke="#9a5a13" stroke-width="2"/>
+          <text x="536" y="172" fill="#75420d" font-size="13" font-weight="700">Pod B 쪽 (to-container)</text>
+          <text x="536" y="192" fill="#253746" font-size="12">⑤ ingress 정책 검사</text>
+          <text x="536" y="210" fill="#253746" font-size="12">   출발지 IP가 아니라 identity로 허용/차단 판단</text>
+          <rect x="520" y="244" width="380" height="54" rx="10" fill="#fff1df" stroke="#9a5a13"/>
+          <text x="536" y="266" fill="#75420d" font-size="13" font-weight="700">eth0 / cilium_vxlan · bpf_host / bpf_overlay</text>
+          <text x="536" y="286" fill="#253746" font-size="12">④ 디캡슐화 · 출발지 identity 확인 · 목적지 Pod 찾기</text>
+          <path d="M710 244 V222" stroke="#245d7c" stroke-width="2.5" marker-end="url(#arrC)"/>
+          <path d="M820 150 V122" stroke="#245d7c" stroke-width="2.5" marker-end="url(#arrC)"/>
+          <path d="M230 298 C230 350, 470 360, 470 345 C470 360, 710 350, 710 300" fill="none" stroke="#245d7c" stroke-width="2.5" marker-end="url(#arrC)"/>
+          <text x="470" y="370" text-anchor="middle" fill="#253746" font-size="13" font-weight="700">Underlay 네트워크</text>
+        </svg>
+      </div>
+      <p class="caption">그림 3. Pod A → Service → 다른 Node의 Pod B. 참고: Arthur Chiao, Life of a Packet in Cilium / Cilium Docs, Life of a Packet</p>
+
+      <ul>
+        <li><strong>같은 Node의 Pod끼리:</strong> <code>bpf_lxc</code>가 목적지가 같은 Node의 Pod인 것을 확인하면, 정책을 검사한 뒤 목적지 Pod 쪽으로 바로 redirect한다. Netfilter를 거치지 않는다.</li>
+        <li><strong>다른 Node로:</strong> 터널 모드는 <code>cilium_vxlan</code>으로 캡슐화하고, 네이티브 라우팅 모드는 언더레이가 Pod CIDR을 알고 있어야 한다(기본 경로 라우터 또는 BGP, <code>auto-direct-node-routes</code>). Week 4의 Overlay와 Underlay 비교와 같은 선택지다.</li>
+        <li><strong>L7 정책이 있으면:</strong> 패킷이 Node의 Envoy 프록시를 한 번 거친다. L7 정책이 없으면 프록시를 거치지 않는다.</li>
+        <li><strong>최신 커널:</strong> 커널 5.10 이상에서는 BPF Host Routing으로 커널 라우팅 단계까지 건너뛰고 eBPF가 NIC로 바로 보낼 수 있다. 오래된 자료(Cilium 1.8, 커널 4.19 기준)의 그림보다 경로가 더 짧다.</li>
+      </ul>
+
+      <div class="question">
+        <p><strong>질문 3.</strong> Pod가 <em>보내는</em> 패킷인데, 자료에서는 왜 "lxc의 <em>ingress</em>"에서 처리한다고 할까?</p>
+        <p>방향을 호스트 쪽 veth 끝(<code>lxc</code>) 기준으로 보기 때문이다. Pod의 <code>eth0</code>에서 나간 패킷은 veth 쌍의 반대편인 <code>lxc</code>로 "들어온다". 그래서 Pod 입장의 egress가 <code>lxc</code> 입장에서는 tc ingress다. 스위치 포트 ACL에서 "서버가 보낸 트래픽 = 포트 inbound"인 것과 같다.</p>
+      </div>
+
+      <div class="refs">
+        <p>참고: <a href="https://docs.cilium.io/en/stable/network/ebpf/lifeofapacket/">Cilium Docs - Life of a Packet</a></p>
+        <p>참고: <a href="https://docs.cilium.io/en/stable/network/concepts/routing/">Cilium Docs - Routing (Encapsulation / Native-Routing)</a></p>
+        <p>참고: <a href="https://arthurchiao.art/blog/cilium-life-of-a-packet-pod-to-service/">Arthur Chiao - Life of a Packet in Cilium: Pod-to-Service</a></p>
+      </div>
+    </section>
+
+    <!-- 4 -->
+    <section id="kpr">
+      <h2>4. kube-proxy Replacement</h2>
+
+      <h3>기존: kube-proxy + iptables (Week 2 복습)</h3>
+      <p>kube-proxy는 Service마다 iptables 규칙을 만든다. Pod가 ClusterIP로 보낸 패킷은 Netfilter의 PREROUTING/OUTPUT에서 DNAT되어 Backend Pod IP로 바뀐다. Service와 Endpoint가 많아지면 규칙이 수만 줄이 되고, 순차 매칭과 전체 재작성 문제가 생긴다.</p>
+
+      <h3>Cilium: 같은 일을 더 앞에서, Map으로</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>트래픽</th><th>처리 위치</th><th>방식</th></tr></thead>
+        <tbody>
+          <tr><td>클러스터 안 Pod → ClusterIP</td><td>cgroup socket hook (Socket-LB)</td><td><code>connect()</code> 시점에 소켓의 목적지를 Backend Pod IP로 바꾼다. 이후 패킷마다 NAT할 필요가 없다.</td></tr>
+          <tr><td>외부 → NodePort / LoadBalancer</td><td>Node NIC의 tc (<code>bpf_host</code>), 선택적으로 XDP</td><td>BPF Map에서 Backend를 찾아 DNAT. 기본은 SNAT 모드이고, 응답이 Backend에서 클라이언트로 바로 가는 DSR 모드도 있다.</td></tr>
+          <tr><td>Socket-LB를 쓸 수 없는 경우</td><td><code>bpf_lxc</code> (tc)</td><td>패킷 단위로 DNAT (그림 3의 ①)</td></tr>
+        </tbody>
+      </table></div>
+
+      <p class="legacy"><strong>기존 인프라 비유</strong> 기존에는 클라이언트가 NetScaler VIP로 보내면 <em>중앙 장비</em>가 멤버를 고른다. Cilium의 Socket-LB는 <em>클라이언트 서버 안에서</em> 연결을 맺는 순간 멤버를 골라서, 처음부터 멤버 IP로 연결하게 한다. 모든 Node에 작은 NetScaler가 하나씩 있고, 그것이 연결 시점에만 동작한다고 보면 된다.</p>
+
+      <h3>설정과 확인</h3>
+      <pre><code># Helm 설치 시 kube-proxy 대체 활성화
+helm install cilium cilium/cilium -n kube-system \
+  --set kubeProxyReplacement=true \
+  --set k8sServiceHost=&lt;API_SERVER_IP&gt; --set k8sServicePort=6443
+
+# 상태 확인
+kubectl -n kube-system exec ds/cilium -- cilium-dbg status | grep KubeProxyReplacement
+
+# Service → Backend 테이블 (iptables-save 대신 보는 것)
+kubectl -n kube-system exec ds/cilium -- cilium-dbg service list
+kubectl -n kube-system exec ds/cilium -- cilium-dbg bpf lb list</code></pre>
+      <p class="note">kube-proxy가 없으면 Cilium이 API Server의 ClusterIP를 쓸 수 없다. 그래서 <code>k8sServiceHost</code>와 <code>k8sServicePort</code>로 API Server 주소를 직접 알려준다.</p>
+
+      <div class="question">
+        <p><strong>질문 4.</strong> Socket-LB 환경에서 Pod 안에서 <code>tcpdump</code>를 하면 목적지가 ClusterIP로 보일까, Backend Pod IP로 보일까?</p>
+        <p>Backend Pod IP로 보인다. <code>connect()</code> 시점에 이미 목적지가 바뀌었기 때문에, 패킷은 처음부터 Pod IP를 목적지로 만들어진다. 반면 앱이 <code>getpeername()</code>으로 상대 주소를 물어보면 ClusterIP를 돌려준다. 앱 입장에서는 여전히 ClusterIP로 연결한 것처럼 보이게 하는 것이다. 장애 분석 시 iptables 규칙이나 패킷 캡처에서 ClusterIP를 찾으면 안 되는 이유다.</p>
+      </div>
+
+      <div class="refs">
+        <p>참고: <a href="https://docs.cilium.io/en/stable/network/kubernetes/kubeproxy-free/">Cilium Docs - Kubernetes Without kube-proxy</a></p>
+      </div>
+    </section>
+
+    <!-- 5 -->
+    <section id="identity">
+      <h2>5. NetworkPolicy / Identity</h2>
+
+      <h3>왜 IP 기반 정책이 안 되는가</h3>
+      <p>Pod IP는 재시작할 때마다 바뀌고, 같은 역할의 Pod가 수십 개로 늘었다 줄었다 한다. IP 기반 규칙은 변경될 때마다 모든 Node의 규칙을 고쳐야 한다. 그래서 Cilium은 정책을 IP가 아니라 <strong>라벨</strong>(<code>app=web</code>, <code>app=db</code>)로 쓴다.</p>
+
+      <h3>Identity: 라벨 묶음에 붙인 번호</h3>
+      <ol>
+        <li>Pod가 생기면 agent가 Pod의 보안 관련 라벨 묶음(예: <code>app=web, ns=shop</code>)을 보고 <strong>숫자 Identity</strong>를 할당한다. 라벨이 같은 Pod는 Identity를 공유한다.</li>
+        <li>agent는 <strong>IP → Identity</strong> 대응표(ipcache Map)와 <strong>Endpoint별 정책 Map</strong>(허용되는 Identity와 Port 목록)을 커널에 써 넣는다.</li>
+        <li>패킷이 오면 eBPF가 출발지 Identity를 확인하고 정책 Map을 조회해서 허용/차단을 판정한다. 터널 모드에서는 보내는 Node가 캡슐화 헤더에 출발지 Identity를 실어 보내고, 네이티브 라우팅에서는 받는 Node가 출발지 IP로 ipcache를 조회한다.</li>
+      </ol>
+      <p>Pod가 10개에서 100개로 늘어도 라벨이 같으면 Identity는 하나다. 정책 Map을 고칠 필요 없이 ipcache에 "새 IP → 같은 Identity"만 추가하면 된다.</p>
+
+      <p class="legacy"><strong>기존 인프라 비유</strong> Fortigate에서 IP를 직접 쓰는 대신 <strong>동적 주소 객체</strong>(SDN Connector로 자동 갱신되는 주소 그룹)로 정책을 쓰는 것과 같다. 정책은 "WEB 그룹 → DB 그룹 3306 허용" 한 줄이고, 그룹 멤버 IP는 자동으로 바뀐다. Identity는 그 주소 그룹에 붙은 번호이고, 패킷마다 IP 대신 그 번호로 매칭한다.</p>
+
+      <h3>정책 예시 (L3/L4 + L7)</h3>
+      <pre><code>apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: db-allow-web
+  namespace: shop
+spec:
+  endpointSelector:
+    matchLabels:
+      app: db                 # 이 정책이 보호하는 대상
+  ingress:
+  - fromEndpoints:
+    - matchLabels:
+        app: web              # IP가 아니라 라벨로 출발지 지정
+    toPorts:
+    - ports:
+      - port: "3306"
+        protocol: TCP
+---
+# L7 예시: api Pod에는 GET /public/* 만 허용 (Envoy가 처리)
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: api-l7
+  namespace: shop
+spec:
+  endpointSelector:
+    matchLabels: { app: api }
+  ingress:
+  - fromEndpoints:
+    - matchLabels: { app: web }
+    toPorts:
+    - ports: [{ port: "8080", protocol: TCP }]
+      rules:
+        http:
+        - method: GET
+          path: "/public/.*"</code></pre>
+
+      <h3>기본 동작 (default 모드)</h3>
+      <ul>
+        <li>Pod는 처음에 아무 제한 없이 통신한다.</li>
+        <li>어떤 정책이 그 Pod를 선택하는 순간, <strong>정책에 있는 방향(ingress/egress)은 default deny</strong>가 되고 허용한 것만 통과한다.</li>
+        <li>Kubernetes 표준 <code>NetworkPolicy</code>도 그대로 지원한다. <code>CiliumNetworkPolicy</code>는 L7, DNS(FQDN) 기반 규칙 등을 추가로 지원한다.</li>
+      </ul>
+      <p class="note">Fortigate의 "마지막 줄 implicit deny"와 달리, 정책이 하나도 선택하지 않은 Pod는 모두 허용 상태다. 정책을 처음 적용할 때는 그 Pod의 해당 방향이 갑자기 default deny로 바뀌므로 필요한 트래픽(DNS 등)을 빠뜨리지 않았는지 확인해야 한다.</p>
+
+      <pre><code># Identity와 정책 상태 확인
+kubectl -n kube-system exec ds/cilium -- cilium-dbg endpoint list
+kubectl -n kube-system exec ds/cilium -- cilium-dbg identity list
+kubectl -n kube-system exec ds/cilium -- cilium-dbg bpf ipcache list
+kubectl -n kube-system exec ds/cilium -- cilium-dbg bpf policy get &lt;ENDPOINT_ID&gt;</code></pre>
+
+      <div class="question">
+        <p><strong>질문 5.</strong> 기존 인프라처럼 IP 기반 방화벽 정책을 Kubernetes에 그대로 쓰기 어려운 이유는?</p>
+        <p>Pod IP가 고정되지 않기 때문이다. Pod가 재시작하거나 늘어날 때마다 IP가 바뀌므로 정책을 계속 고쳐야 하고, 모든 Node에 다시 배포해야 한다. 라벨 기반 Identity를 쓰면 정책은 그대로 두고 IP와 Identity의 대응만 자동으로 갱신된다.</p>
+      </div>
+
+      <div class="refs">
+        <p>참고: <a href="https://docs.cilium.io/en/stable/security/network/identity/">Cilium Docs - Identity-Based</a></p>
+        <p>참고: <a href="https://docs.cilium.io/en/stable/security/policy/intro/">Cilium Docs - Policy Enforcement Modes</a></p>
+        <p>참고: <a href="https://docs.cilium.io/en/stable/security/policy/language/">Cilium Docs - Layer 3/4/7 Policy Language</a></p>
+      </div>
+    </section>
+
+    <!-- 6 -->
+    <section id="hubble">
+      <h2>6. Hubble Overview</h2>
+      <p>Hubble은 Cilium의 <strong>관찰(Observability) 도구</strong>다. 별도의 패킷 미러링이나 에이전트 없이, Cilium의 eBPF datapath가 패킷을 처리하면서 남기는 이벤트를 그대로 모아서 보여준다.</p>
+
+      <div class="table-wrap"><table>
+        <thead><tr><th>구성요소</th><th>하는 일</th><th>기존 인프라 비유</th></tr></thead>
+        <tbody>
+          <tr><td>Hubble Server</td><td>각 Node의 cilium-agent에 내장. eBPF 이벤트를 flow로 변환해서 gRPC로 제공</td><td>장비별 로그 / <code>diagnose debug flow</code></td></tr>
+          <tr><td><code>hubble-relay</code></td><td>모든 Node의 Hubble Server를 모아서 클러스터 전체 flow를 제공</td><td>FortiAnalyzer (로그 수집)</td></tr>
+          <tr><td><code>hubble</code> CLI</td><td>flow 조회, 필터링</td><td>로그 검색</td></tr>
+          <tr><td><code>hubble-ui</code></td><td>서비스 간 연결 관계(서비스 맵)와 flow를 그래픽으로 표시</td><td>FortiView</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>무엇을 볼 수 있나</h3>
+      <ul>
+        <li>L3/L4: 출발지/목적지 Pod, Identity, Port, TCP 플래그, <strong>판정(FORWARDED / DROPPED)과 차단 사유</strong></li>
+        <li>L7 (L7 가시성 또는 정책이 켜진 경우): HTTP 메서드, 경로, 응답 코드, DNS 질의</li>
+        <li>서비스 맵: 어떤 서비스가 어떤 서비스를 호출하는지</li>
+      </ul>
+
+      <pre><code># 차단된 트래픽만 보기
+hubble observe --verdict DROPPED
+
+# 특정 Pod로 가는 트래픽 보기
+hubble observe --to-pod shop/db-5f6b9c --follow
+
+# 출력 예시 (형식 설명용)
+Oct  1 05:12:03.123: shop/web-7d9c:51234 (ID:12345) -&gt; shop/db-5f6b:3306 (ID:23456) policy-verdict:L3-L4 INGRESS ALLOWED (TCP Flags: SYN)
+Oct  1 05:12:09.456: shop/batch-6c1a:40022 (ID:34567) -&gt; shop/db-5f6b:3306 (ID:23456) Policy denied DROPPED (TCP Flags: SYN)</code></pre>
+
+      <p class="legacy"><strong>기존 인프라 비유</strong> Fortigate의 <code>diagnose debug flow</code>는 "이 패킷이 몇 번 정책에 걸려서 허용/차단됐다"를 보여준다. Hubble은 이것을 <strong>클러스터의 모든 Node에서 항상</strong> 수집하고, IP 대신 Pod 이름과 Identity로 보여준다. Pod IP가 계속 바뀌는 환경에서는 IP로 찍힌 로그만으로는 누가 보냈는지 알 수 없기 때문에 이 차이가 중요하다.</p>
+
+      <div class="refs">
+        <p>참고: <a href="https://docs.cilium.io/en/stable/observability/hubble/">Cilium Docs - Network Observability with Hubble</a></p>
+        <p>참고: <a href="https://docs.cilium.io/en/stable/overview/component-overview/">Cilium Docs - Component Overview (Hubble)</a></p>
+      </div>
+    </section>
+
+    <!-- summary -->
+    <section id="summary">
+      <h2>정리 과제</h2>
+
+      <div class="answer">
+        <h3>1. eBPF가 네트워크 처리에 들어가는 위치</h3>
+        <ul>
+          <li><strong>XDP:</strong> NIC 드라이버 단계. skb가 만들어지기 전이라 가장 빠르다. NodePort 가속, 대량 DROP에 쓴다.</li>
+          <li><strong>tc ingress / egress:</strong> 각 인터페이스(<code>lxc</code>, <code>eth0</code>, <code>cilium_host</code>, <code>cilium_vxlan</code>)에 붙는다. Cilium의 메인 datapath로 정책, NAT, 라우팅, 캡슐화를 처리한다.</li>
+          <li><strong>cgroup socket hook:</strong> <code>connect()</code>/<code>sendmsg()</code> 시스템 콜 시점. 패킷이 생기기도 전에 ClusterIP를 Backend IP로 바꾼다(Socket-LB).</li>
+        </ul>
+        <p>세 위치 모두 Netfilter(iptables)보다 앞에 있거나 아예 패킷이 생기기 전이다. 그래서 Cilium 트래픽은 대부분 iptables를 거치지 않고 처리가 끝난다. (그림 2)</p>
+      </div>
+
+      <div class="answer">
+        <h3>2. Cilium이 기존 CNI와 다른 점</h3>
+        <div class="table-wrap"><table>
+          <thead><tr><th>관점</th><th>기존 CNI (Flannel, iptables 기반 구성)</th><th>Cilium</th></tr></thead>
+          <tbody>
+            <tr><td>패킷 처리</td><td>Linux 브리지 + Netfilter(iptables) 규칙</td><td>인터페이스마다 붙은 eBPF 프로그램 (브리지 없음)</td></tr>
+            <tr><td>규칙 저장 / 조회</td><td>체인을 순서대로 검사, 변경 시 전체 재작성</td><td>Map 해시 조회, 엔트리 단위 갱신</td></tr>
+            <tr><td>Service</td><td>kube-proxy가 iptables/IPVS로 DNAT</td><td>kube-proxy 없이 Socket-LB / tc / XDP에서 처리</td></tr>
+            <tr><td>정책 기준</td><td>IP / Port (Flannel은 정책 자체가 없음)</td><td>라벨 기반 Identity, L7(HTTP, DNS)까지</td></tr>
+            <tr><td>가시성</td><td>별도 도구 필요 (tcpdump, conntrack)</td><td>Hubble이 datapath 이벤트를 그대로 보여줌</td></tr>
+          </tbody>
+        </table></div>
+        <p>한 문장으로 하면, 기존 CNI는 커널이 원래 가진 기능(브리지, iptables)을 <em>설정</em>해서 쓰고, Cilium은 처리 로직 자체를 eBPF <em>프로그램</em>으로 커널에 넣는다. Calico도 eBPF 데이터플레인 모드를 지원하므로, 정확히는 "CNI 종류"보다 "iptables 데이터플레인 vs eBPF 데이터플레인"의 차이다.</p>
+      </div>
+
+      <div class="answer">
+        <h3>3. 트래픽 관찰과 정책 적용이 어떻게 연결되는지</h3>
+        <p>정책을 판정하는 곳과 관찰 데이터가 생기는 곳이 <strong>같은 eBPF 프로그램</strong>이다. 그래서 Hubble에 보이는 판정 결과는 실제로 패킷에 적용된 결과 그 자체다.</p>
+
+        <div class="flow" role="img" aria-label="정책 적용과 Hubble 관찰이 연결되는 흐름">
+          <svg viewBox="0 0 940 230" xmlns="http://www.w3.org/2000/svg" font-family="Pretendard, 'Noto Sans KR', 'Malgun Gothic', sans-serif">
+            <defs>
+              <marker id="arrD" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#245d7c"/></marker>
+            </defs>
+            <rect x="20" y="30" width="190" height="96" rx="12" fill="#e3f0f6" stroke="#245d7c" stroke-width="2"/>
+            <text x="115" y="60" text-anchor="middle" fill="#245d7c" font-size="14" font-weight="700">① 정책 작성</text>
+            <text x="115" y="84" text-anchor="middle" fill="#253746" font-size="12">"app=web → app=db</text>
+            <text x="115" y="102" text-anchor="middle" fill="#253746" font-size="12">3306 허용"</text>
+            <rect x="250" y="30" width="200" height="96" rx="12" fill="#fff" stroke="#245d7c" stroke-width="2"/>
+            <text x="350" y="60" text-anchor="middle" fill="#245d7c" font-size="14" font-weight="700">② cilium-agent</text>
+            <text x="350" y="84" text-anchor="middle" fill="#253746" font-size="12">라벨 → Identity 번호</text>
+            <text x="350" y="102" text-anchor="middle" fill="#253746" font-size="12">정책 Map · ipcache 기록</text>
+            <rect x="490" y="30" width="200" height="96" rx="12" fill="#fff1df" stroke="#9a5a13" stroke-width="2"/>
+            <text x="590" y="60" text-anchor="middle" fill="#75420d" font-size="14" font-weight="700">③ eBPF (패킷마다)</text>
+            <text x="590" y="84" text-anchor="middle" fill="#253746" font-size="12">출발지 Identity로 Map 조회</text>
+            <text x="590" y="102" text-anchor="middle" fill="#253746" font-size="12">FORWARD / DROP 판정</text>
+            <rect x="730" y="30" width="190" height="96" rx="12" fill="#def0e6" stroke="#2d6a4f" stroke-width="2"/>
+            <text x="825" y="60" text-anchor="middle" fill="#24533d" font-size="14" font-weight="700">④ Hubble</text>
+            <text x="825" y="84" text-anchor="middle" fill="#253746" font-size="12">판정 이벤트 → flow</text>
+            <text x="825" y="102" text-anchor="middle" fill="#253746" font-size="12">Pod 이름 · Identity · 사유</text>
+            <path d="M210 78 H248 M450 78 H488 M690 78 H728" stroke="#245d7c" stroke-width="2.5" marker-end="url(#arrD)"/>
+            <path d="M825 126 V180 H115 V128" fill="none" stroke="#2d6a4f" stroke-width="2.5" stroke-dasharray="7 5" marker-end="url(#arrD)"/>
+            <text x="470" y="205" text-anchor="middle" fill="#24533d" font-size="13" font-weight="700">⑤ "Policy denied DROPPED"를 보고 정책 수정 → 다시 ①</text>
+          </svg>
+        </div>
+        <p class="caption">그림 4. 정책 적용(①~③)과 관찰(④)이 같은 datapath에서 이어지는 흐름</p>
+
+        <ul>
+          <li>eBPF 프로그램은 패킷을 허용하거나 버릴 때 그 결과(판정, 사유, Identity)를 이벤트로 남긴다. Hubble은 이 이벤트를 수집한다.</li>
+          <li>정책이 IP가 아니라 Identity 기준이므로, Hubble flow에도 Pod 이름과 라벨이 그대로 찍힌다. "어떤 서비스가 어떤 서비스에 막혔는지"를 바로 알 수 있다.</li>
+          <li>운영에서는 "Hubble로 실제 통신 관계 파악 → 그것을 근거로 정책 작성 → DROPPED flow로 누락 확인"이라는 순서로 정책을 만든다. Fortigate에서 로그를 보고 정책을 다듬는 것과 같은 작업을 Pod 단위로 하는 것이다.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- questions -->
+    <section id="questions">
+      <h2>스터디 토론 질문</h2>
+      <div class="question">
+        <p><strong>토론 1.</strong> 중앙 방화벽(Fortigate) 구조와 비교해서, 정책이 모든 Node에 분산되는 Cilium 구조의 장점과 운영상 걱정되는 점은 무엇일까? (예: 장점은 병목과 우회 경로가 없다는 것, 걱정은 보안팀이 정책을 어디서 감사하느냐는 것)</p>
+      </div>
+      <div class="question">
+        <p><strong>토론 2.</strong> 커널 버전에 따라 쓸 수 있는 기능(BPF Host Routing은 5.10 이상 등)이 달라진다. 사내 서버의 OS와 커널 표준이 Cilium 도입에 어떤 제약이 될까?</p>
+      </div>
+      <div class="question">
+        <p><strong>토론 3.</strong> iptables가 거의 쓰이지 않는 환경에서 장애가 나면, 기존에 쓰던 <code>iptables-save</code>, <code>tcpdump</code> 대신 무엇을 봐야 할까? (Week 8 Troubleshooting과 연결)</p>
+      </div>
+    </section>
+
+    <section id="refs">
+      <h2>참고 자료</h2>
+      <ul>
+        <li><a href="https://tech.ktcloud.com/entry/eBPF-%EA%B8%B0%EB%B0%98%EC%9D%98-%EA%B0%95%EB%A0%A5%ED%95%9C-%EC%BF%A0%EB%B2%84%EB%84%A4%ED%8B%B0%EC%8A%A4-%EB%84%A4%ED%8A%B8%EC%9B%8C%ED%82%B9-Cilium-CNI-%EC%86%8C%EA%B0%9C">kt cloud 기술블로그 - eBPF 기반의 강력한 쿠버네티스 네트워킹: Cilium CNI 소개 (2024.10)</a></li>
+        <li><a href="https://ebpf.io/ko-kr/what-is-ebpf/">ebpf.io - eBPF란 무엇인가 (한국어)</a></li>
+        <li><a href="https://docs.cilium.io/en/stable/overview/component-overview/">Cilium Docs - Component Overview</a></li>
+        <li><a href="https://docs.cilium.io/en/stable/network/ebpf/lifeofapacket/">Cilium Docs - Life of a Packet</a></li>
+        <li><a href="https://docs.cilium.io/en/stable/network/kubernetes/kubeproxy-free/">Cilium Docs - Kubernetes Without kube-proxy</a></li>
+        <li><a href="https://docs.cilium.io/en/stable/security/network/identity/">Cilium Docs - Identity-Based Security</a></li>
+        <li><a href="https://docs.cilium.io/en/stable/observability/hubble/">Cilium Docs - Hubble</a></li>
+        <li><a href="https://arthurchiao.art/blog/cilium-life-of-a-packet-pod-to-service/">Arthur Chiao - Life of a Packet in Cilium (Cilium 1.8 / 커널 4.19 기준)</a></li>
+        <li><a href="https://isovalent.com/books/learning-ebpf/">Liz Rice - Learning eBPF / What is eBPF? (Isovalent)</a></li>
+        <li><a href="https://on.com2us.com/tech/ebpf-xdp-deep-dive/">컴투스 기술블로그 - 컨테이너 환경에서의 eBPF/XDP 로드밸런서 Deep Dive</a></li>
+      </ul>
+    </section>
+  </main>
+
+  <footer class="wrap">Byun gimok · Week 5</footer>
+</body>
+</html>
