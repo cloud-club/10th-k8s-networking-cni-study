@@ -344,7 +344,7 @@ eBPF
 
   * Socket 및 Application 수준의 네트워크 동작 제어
 
-## 3. Cilium Datapath
+## 8. Cilium Datapath
 
 기존 Kubernetes 네트워킹에서는 여러 Kernel 기능을 조합해서 Packet을 처리함.
 
@@ -378,7 +378,7 @@ Network
 
 즉, **eBPF 자체가 CNI를 대체하는 것이 아니라 Cilium이 eBPF를 사용하여 Kernel datapath를 구성하는 것**이 핵심임.
 
-## 4. kube-proxy Replacement
+## 9. kube-proxy Replacement
 
 기존 Kubernetes Service의 기본적인 구조:
 
@@ -410,7 +410,7 @@ Backend Pod
 
 **주의:** `kube-proxy replacement`는 단순히 kube-proxy 프로세스를 삭제하는 것이 아니라, kube-proxy가 담당하던 기능을 Cilium/eBPF datapath가 대신 수행한다는 의미임.
 
-## 5. NetworkPolicy와 Identity
+## 10. NetworkPolicy와 Identity
 
 기존 IP 기반 NetworkPolicy:
 
@@ -442,7 +442,7 @@ frontend
 
 처럼 Pod의 IP 자체보다 **어떤 Kubernetes Endpoint/Identity에서 온 traffic인지**를 기준으로 정책을 적용할 수 있음.
 
-## 6. Hubble
+## 11. Hubble
 
 Hubble은 Cilium의 Observability 시스템
 
@@ -482,7 +482,7 @@ Flow / Drop / Verdict 확인
 
 처럼 **실제 datapath에서 traffic이 어떻게 처리됐는지 확인할 수 있음.**
 
-## 7. 기존 CNI와 Cilium의 차이
+## 12. 기존 CNI와 Cilium의 차이
 
 | 항목             | 기존 CNI                           | Cilium                        |
 | -------------- | -------------------------------- | ----------------------------- |
