@@ -509,9 +509,3 @@ Flow / Drop / Verdict 확인
                        ↑
                     Cilium
 ```
-
-Ref:
-- [1]: https://training.linuxfoundation.org/certification/cilium-certified-associate-cca/?utm_source=chatgpt.com "Cilium Certified Associate (CCA) - Linux Foundation - Education"
-- [2]: https://docs.cilium.io/en/latest/reference-guides/bpf/architecture/?utm_source=chatgpt.com "BPF Architecture — Cilium 1.21.0-dev documentation"
-- [3]: https://docs.cilium.io/en/latest/network/ebpf/maps/?utm_source=chatgpt.com "eBPF Maps — Cilium 1.21.0-dev documentation"
-- [4]: https://docs.cilium.io/en/stable/network/ebpf/intro/?utm_source=chatgpt.com "Introduction — Cilium 1.20.2 documentation"
