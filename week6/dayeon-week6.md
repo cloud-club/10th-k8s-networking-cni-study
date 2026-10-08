@@ -31,7 +31,7 @@ Amazon EKS의 Multus 소개(https://docs.aws.amazon.com/eks/latest/userguide/pod
 
 따라서 Multi-Networking의 핵심은 단순히 **“NIC를 여러 개 붙이는 것”**&#xC774; 아니라,
 
-> **하나의 Pod가 서로 다른 Networking Datapath를 동시에 사용할 수 있도록 하는 것**
+**하나의 Pod가 서로 다른 Networking Datapath를 동시에 사용할 수 있도록 하는 것**
 
 ---
 
@@ -102,9 +102,7 @@ net2 → SR-IOV → High Performance Network
 
 Multus는 **Meta CNI Plugin**임.
 
-중요한 점은:
-
-> **Multus가 직접 네트워크 datapath를 구현하는 것이 아님.**
+중요한 점은 **Multus가 직접 네트워크 datapath를 구현하는 것이 아님.**
 
 Multus는 다른 CNI Plugin을 호출하여 하나의 Pod에 여러 네트워크를 연결하는 역할을 수행함. Red Hat과 Multus 공식 문서 모두 Multus를 다른 CNI plugin을 호출하는 meta-plugin으로 설명함.
 
@@ -292,8 +290,6 @@ NAD로 관리하는게 사실상 표준적인 선택이다~
 
 # 6. Multus와 CNI Chaining은 같은 것이 아님
 
-둘을 구분해야 함.
-
 ## Multi-Networking
 
 **하나의 Pod에 여러 개의 네트워크 인터페이스를 연결하는 것**
@@ -307,7 +303,6 @@ Pod
 
 Multus의 대표적인 역할임.
 
----
 
 ## CNI Chaining
 
