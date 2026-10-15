@@ -488,6 +488,7 @@ Hubble은 네트워크 흐름을 추적하는 관측 도구이며, 애플리케�
 
 ## 참고 자료
 
+- [kube-proxy가 느린 이유와 Cilium이 해결하는 방법](https://youtu.be/4miCVaIgd08?si=lPseWc0ZWiPKfNSo)
 - [Cilium — eBPF Datapath](https://docs.cilium.io/en/stable/network/ebpf/)
 - [Cilium — eBPF Maps](https://docs.cilium.io/en/stable/network/ebpf/maps/)
 - [Cilium — Hubble](https://docs.cilium.io/en/stable/observability/hubble/)
