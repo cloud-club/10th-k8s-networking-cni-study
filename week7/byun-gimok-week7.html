@@ -214,16 +214,6 @@ h4{font-size:16.5px;line-height:1.5;margin:26px 0 8px;color:var(--fg-2)}
 
 <main>
 
-<div class="tbl"><table>
-  <thead><tr><th scope="col">이번 주의 구분</th><th scope="col">이해할 질문</th><th scope="col">기존 운영 업무와의 대응</th></tr></thead>
-  <tbody>
-    <tr><th scope="row">eBPF Program</th><td>어느 시점에 어떤 코드를 실행하는가?</td><td>패킷을 처리하는 장비의 처리 로직</td></tr>
-    <tr><th scope="row">BPF Map</th><td>처리 판단에 필요한 상태를 어디서 읽는가?</td><td>주소·백엔드·정책·연결 상태 테이블</td></tr>
-    <tr><th scope="row">Hubble Flow</th><td>어떤 통신이 어디에서 어떻게 처리되었는가?</td><td>트래픽 로그와 관찰 정보</td></tr>
-  </tbody>
-</table></div>
-<p>위 대응은 역할을 이해하기 위한 비교임. Map이 모두 라우팅 테이블인 것은 아니며, Hubble이 중앙 방화벽이나 모든 패킷을 저장하는 캡처 장비라는 뜻도 아님.</p>
-
 <!-- ===================== 1 ===================== -->
 <section id="s1">
   <h2 class="sec"><span class="ico"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"><path d="M12 20v2m0-20v2m5 16v2m0-20v2M2 12h2m-2 5h2M2 7h2m16 5h2m-2 5h2M20 7h2M7 20v2M7 2v2"/><rect width="16" height="16" x="4" y="4" rx="2"/><rect width="8" height="8" x="8" y="8" rx="1"/></g></svg></span><span class="sec-no">1</span>eBPF 동작 원리</h2>
