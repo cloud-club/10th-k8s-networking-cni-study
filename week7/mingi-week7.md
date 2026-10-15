@@ -6,7 +6,8 @@
 
 리눅스 커널에서 작은 사용자 정의 코드를 실행할 수 있게 해주는 기술
 
-<img width="773" height="275" alt="image" src="https://github.com/user-attachments/assets/ffc04bfb-1ae8-4392-a4d6-7029e0dd0088" />
+<img width="773" height="275" alt="image" src="https://github.com/user-attachments/assets/7d234630-ea83-4507-84bb-cdc4e2ae382b" />
+
 
 **커널의 필요한 지점에서 직접 코드를 실행하여 네트워크 처리와 관찰 기능을 유연하게 구현할 수 있다**
 
