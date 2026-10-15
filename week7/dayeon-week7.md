@@ -488,6 +488,7 @@ Hubble은 네트워크 흐름을 추적하는 관측 도구이며, 애플리케�
 
 ## 참고 자료
 
+- [eBPF 기반의 강력한 쿠버네티스 네트워킹: Cilium CNI 소개 : kt cloud 기술 블로그](https://tech.ktcloud.com/entry/eBPF-%EA%B8%B0%EB%B0%98%EC%9D%98-%EA%B0%95%EB%A0%A5%ED%95%9C-%EC%BF%A0%EB%B2%84%EB%84%A4%ED%8B%B0%EC%8A%A4-%EB%84%A4%ED%8A%B8%EC%9B%8C%ED%82%B9-Cilium-CNI-%EC%86%8C%EA%B0%9C)
 - [kube-proxy가 느린 이유와 Cilium이 해결하는 방법](https://youtu.be/4miCVaIgd08?si=lPseWc0ZWiPKfNSo)
 - [Cilium — eBPF Datapath](https://docs.cilium.io/en/stable/network/ebpf/)
 - [Cilium — eBPF Maps](https://docs.cilium.io/en/stable/network/ebpf/maps/)
