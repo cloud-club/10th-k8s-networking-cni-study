@@ -1,0 +1,1251 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Week 8. Kubernetes Networking 장애 분석과 운영</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#E4E9F0; --paper:#FBFCFD; --paper2:#EFF3F8; --ink:#0F1B2D; --muted:#566377; --line:#D0D8E3;
+  --fail:#C93434; --ok:#0F7F61; --warn:#9A6212;
+  --flannel:#2F6BDC; --calico:#B85F08; --cilium:#7452DB; --on-chip:#fff;
+  --r-cni:#3F5BD9; --r-svc:#0E8A8A; --r-dns:#B7791F; --r-net:#64748B;
+  --term-bg:#0C1423; --term-fg:#D6DFEC; --term-dim:#7C8AA3; --term-ok:#4ADE9F; --term-bad:#FF7A7A; --term-warn:#F6C453; --term-cmd:#FFFFFF; --term-bar:#17223A;
+  color-scheme:light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#070C16; --paper:#101929; --paper2:#172238; --ink:#E7EDF6; --muted:#97A5BA; --line:#27344D;
+    --fail:#FF6B6B; --ok:#3DD6A3; --warn:#F0B84E;
+    --flannel:#6B9BFF; --calico:#FFA04D; --cilium:#A48BFF; --on-chip:#0B1220;
+    --r-cni:#7C93FF; --r-svc:#3CC4C4; --r-dns:#F0B84E; --r-net:#94A3B8;
+    --term-bg:#070D19; --term-bar:#111B30;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#070C16; --paper:#101929; --paper2:#172238; --ink:#E7EDF6; --muted:#97A5BA; --line:#27344D;
+  --fail:#FF6B6B; --ok:#3DD6A3; --warn:#F0B84E;
+  --flannel:#6B9BFF; --calico:#FFA04D; --cilium:#A48BFF; --on-chip:#0B1220;
+  --r-cni:#7C93FF; --r-svc:#3CC4C4; --r-dns:#F0B84E; --r-net:#94A3B8;
+  --term-bg:#070D19; --term-bar:#111B30;
+  color-scheme:dark;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font-family:"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;display:flex;flex-direction:column;overflow:hidden}
+#viewport{flex:1;position:relative;min-height:0;overflow:hidden}
+#stage{position:absolute;left:0;top:0;width:1280px;height:720px;transform-origin:0 0;background:var(--paper);box-shadow:0 0 0 1px var(--line);overflow:hidden}
+#controls{height:44px;flex:none;display:flex;align-items:center;gap:12px;padding:0 14px;background:var(--paper);border-top:1px solid var(--line)}
+#controls button{font:inherit;font-size:14px;color:var(--ink);background:var(--paper2);border:1px solid var(--line);border-radius:6px;padding:5px 14px;cursor:pointer}
+#controls button:hover{border-color:var(--muted)}
+#controls button:focus-visible,.step:focus-visible,.pick:focus-visible{outline:3px solid var(--r-cni);outline-offset:2px}
+#bar{flex:1;height:4px;background:var(--line);border-radius:2px;overflow:hidden}
+#bar i{display:block;height:100%;width:0;background:var(--r-cni);transition:width .25s}
+#count{font-size:14px;color:var(--muted);min-width:64px;text-align:right;font-variant-numeric:tabular-nums}
+
+.slide{position:absolute;inset:0;padding:42px 56px 54px;display:none;flex-direction:column}
+.slide.active{display:flex}
+h1{font-size:66px;line-height:1.14;font-weight:900;letter-spacing:-.03em;margin:0}
+h2{font-size:35px;line-height:1.22;font-weight:900;letter-spacing:-.02em;margin:0;display:flex;align-items:center;gap:14px}
+.sub{font-size:19px;color:var(--muted);margin:8px 0 0;line-height:1.5}
+.body{flex:1;min-height:0;margin-top:20px;display:flex;gap:28px}
+.col{display:flex;flex-direction:column;gap:16px;min-width:0}
+.foot{position:absolute;left:56px;right:56px;bottom:18px;display:flex;justify-content:space-between;font-size:13px;color:var(--muted)}
+p{margin:0;line-height:1.6}
+b,strong{font-weight:700}
+code,.mono{font-family:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;font-size:.88em}
+.chip{display:inline-block;padding:2px 12px;border-radius:999px;font-size:15px;font-weight:700;color:var(--on-chip);line-height:1.5}
+.chip.flannel{background:var(--flannel)}.chip.calico{background:var(--calico)}.chip.cilium{background:var(--cilium)}
+
+.term{background:var(--term-bg);border-radius:8px;overflow:hidden;display:flex;flex-direction:column;min-width:0}
+.term .bar{background:var(--term-bar);color:var(--term-dim);font-size:13px;padding:6px 14px;font-family:"JetBrains Mono",ui-monospace,monospace}
+.term pre{margin:0;padding:12px 16px;font-family:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;font-size:14px;line-height:1.55;color:var(--term-fg);white-space:pre;overflow:hidden}
+.term .c{color:var(--term-cmd);font-weight:600}
+.term .d{color:var(--term-dim)}
+.term .ok{color:var(--term-ok)}
+.term .bad{color:var(--term-bad)}
+.term .w{color:var(--term-warn)}
+.term .hl{background:rgba(246,196,83,.14);display:inline-block;width:100%}
+.term .hlbad{background:rgba(255,122,122,.16);display:inline-block;width:100%}
+.term .hlok{background:rgba(74,222,159,.13);display:inline-block;width:100%}
+
+.tbl{border-collapse:collapse;width:100%;font-size:16px;line-height:1.5}
+.tbl th,.tbl td{padding:8px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+.tbl th{font-weight:700;border-bottom:2px solid var(--ink);font-size:15px}
+.tbl td:first-child{font-weight:700}
+.tbl.tight{font-size:15px}.tbl.tight th,.tbl.tight td{padding:6px 10px}
+.tbl.nowrap td:first-child{white-space:nowrap}
+
+.callout{border-left:4px solid var(--r-cni);background:var(--paper2);padding:12px 18px;font-size:18px;line-height:1.6}
+.callout.bad{border-color:var(--fail)}.callout.ok{border-color:var(--ok)}.callout.warn{border-color:var(--r-dns)}
+.sec{border-left:4px solid var(--accent,var(--r-cni));padding:2px 0 2px 16px}
+.sec h3{font-size:17px;margin:0 0 6px;font-weight:700;color:var(--accent,var(--ink))}
+.sec ul{margin:0;padding-left:18px;font-size:16.5px;line-height:1.6}
+.sec li{margin-bottom:4px}
+.sec p{font-size:17px}
+.flannel-t{--accent:var(--flannel)}.calico-t{--accent:var(--calico)}.cilium-t{--accent:var(--cilium)}
+.fail{color:var(--fail);font-weight:700}.okc{color:var(--ok);font-weight:700}
+svg{display:block;max-width:100%}
+svg text{font-family:"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;fill:var(--ink)}
+svg .m{font-family:"JetBrains Mono",ui-monospace,monospace}
+svg .box{fill:var(--paper2);stroke:var(--r-net);stroke-width:1.5}
+svg .box.cni{stroke:var(--r-cni);stroke-width:3}
+svg .box.svc{stroke:var(--r-svc);stroke-width:3}
+svg .box.dns{stroke:var(--r-dns);stroke-width:3}
+svg .node{fill:none;stroke:var(--line);stroke-width:2}
+svg .ln{stroke:var(--ink);stroke-width:2;fill:none}
+svg .sm{font-size:13px;fill:var(--muted)}
+svg .fl{font-size:14px;fill:var(--fail)}
+svg .ah polygon{fill:var(--ink)}
+
+/* step check */
+.steps{display:flex;flex-direction:column;gap:8px;width:580px;flex:none}
+.step{display:grid;grid-template-columns:40px 1fr;align-items:center;gap:14px;text-align:left;font:inherit;color:var(--ink);background:var(--paper2);border:2px solid var(--line);border-radius:8px;padding:10px 14px;cursor:pointer}
+.step:hover{border-color:var(--muted)}
+.step.sel{border-color:var(--fail);background:color-mix(in srgb,var(--fail) 10%,var(--paper))}
+.step.passed{border-color:var(--ok);background:color-mix(in srgb,var(--ok) 9%,var(--paper))}
+.step .lv{font-weight:900;font-size:24px}
+.step .cm{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:14.5px;display:block}
+.step .ad{font-size:15px;color:var(--muted);display:block;margin-top:2px}
+.pick{font:inherit;font-size:15px;color:var(--ink);background:none;border:2px dashed var(--line);border-radius:8px;padding:8px;cursor:pointer}
+.pick:hover{border-color:var(--muted)}
+.pick.sel{border-style:solid;border-color:var(--ok)}
+#verdict{flex:1;min-width:0;border:2px solid var(--line);border-radius:8px;padding:22px 26px;display:flex;flex-direction:column;gap:12px}
+#verdict h3{margin:0;font-size:23px;line-height:1.4}
+#verdict .who{font-size:19px;line-height:1.5}
+#verdict ul{margin:0;padding-left:20px;font-size:17px;line-height:1.65}
+#verdict .hint{color:var(--muted);font-size:18px;line-height:1.75}
+
+.dot{animation:travel 2.2s .5s ease-in-out forwards;transform:translateX(0)}
+.xmark{opacity:0;animation:show .4s 2.7s forwards}
+@keyframes travel{to{transform:translateX(480px)}}
+@keyframes show{to{opacity:1}}
+@media (prefers-reduced-motion:reduce){
+  .dot{animation:none;transform:translateX(480px)}
+  .xmark{animation:none;opacity:1}
+}
+.flow{display:flex;align-items:stretch;gap:0}
+.flow .st{flex:1;padding:6px 22px 6px 0}
+.flow .st h3{font-size:23px;margin:0 0 8px;font-weight:900}
+.flow .st p{font-size:17.5px}
+.flow .ar{width:34px;flex:none;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:30px}
+.nb{display:inline-flex;width:30px;height:30px;border-radius:50%;background:var(--ink);color:var(--paper);align-items:center;justify-content:center;font-size:16px;font-weight:700;margin-right:10px;vertical-align:middle}
+</style>
+</head>
+<body>
+<div id="viewport">
+<div id="stage">
+
+<!-- 1. Title -->
+<section class="slide" data-t="Week 8">
+  <div style="margin-top:56px">
+    <p style="font-size:24px;font-weight:700;color:var(--muted)">Week 8</p>
+    <h1 style="margin-top:14px">Kubernetes Networking<br>장애 분석과 운영</h1>
+    <p class="sub" style="font-size:23px;margin-top:22px;max-width:900px">Common Issue Troubleshooting &amp; Operations<br>Pod, Service, External 통신 장애를 단계별로 확인하고, Flannel, Calico, Cilium에서 확인 방법이 어떻게 다른지 살펴봅니다.</p>
+  </div>
+  <svg viewBox="0 0 1100 150" style="position:absolute;left:56px;right:56px;bottom:66px;width:1168px" aria-label="패킷이 다른 노드로 넘어가는 지점에서 멈추는 그림">
+    <line x1="90" y1="56" x2="1010" y2="56" stroke="var(--line)" stroke-width="4"/>
+    <line x1="90" y1="56" x2="570" y2="56" stroke="var(--ink)" stroke-width="4"/>
+    <g>
+      <circle cx="90" cy="56" r="11" fill="var(--paper)" stroke="var(--ink)" stroke-width="3"/>
+      <circle cx="330" cy="56" r="11" fill="var(--paper)" stroke="var(--ink)" stroke-width="3"/>
+      <circle cx="570" cy="56" r="11" fill="var(--paper)" stroke="var(--fail)" stroke-width="3"/>
+      <circle cx="790" cy="56" r="11" fill="var(--paper)" stroke="var(--muted)" stroke-width="3"/>
+      <circle cx="1010" cy="56" r="11" fill="var(--paper)" stroke="var(--muted)" stroke-width="3"/>
+    </g>
+    <g class="xmark">
+      <circle cx="570" cy="56" r="24" fill="none" stroke="var(--fail)" stroke-width="3"/>
+      <path d="M560 46 L580 66 M580 46 L560 66" stroke="var(--fail)" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    <circle class="dot" cx="90" cy="56" r="7" fill="var(--ink)"/>
+    <g font-size="17" text-anchor="middle">
+      <text x="90" y="104">Pod 네트워크 생성</text>
+      <text x="330" y="104">같은 노드 Pod 통신</text>
+      <text x="570" y="104" style="font-weight:700">다른 노드 Pod 통신</text>
+      <text x="790" y="104" style="fill:var(--muted)">Service 통신</text>
+      <text x="1010" y="104" style="fill:var(--muted)">DNS 이름 조회</text>
+    </g>
+  </svg>
+</section>
+
+<!-- 2. Structure -->
+<section class="slide" data-t="구성 안내">
+  <h2>이번 시간의 구성</h2>
+  <p class="sub">CNI와 상관없이 공통으로 알아야 하는 내용을 먼저 설명하고, 그다음 CNI별 차이를 설명합니다.</p>
+  <div class="body" style="flex-direction:column;gap:22px">
+    <div class="flow" style="margin-top:6px">
+      <div class="st"><h3><span class="nb">1</span>공통 지식</h3><p>통신 경로, 단계별 담당 컴포넌트, 오류 메시지 해석, 영향 범위 확인, 단계별 확인 방법을 설명합니다.</p></div>
+      <div class="ar">›</div>
+      <div class="st"><h3><span class="nb">2</span>CNI별 확인 방법</h3><p>Flannel, Calico, Cilium의 구조와 담당 컴포넌트, 확인 명령, 자주 나오는 증상을 설명합니다.</p></div>
+      <div class="ar">›</div>
+      <div class="st"><h3><span class="nb">3</span>장애 사례와 정리</h3><p>운영에서 자주 발생하는 사례 6개를 따라가 보고, 증상별 요약표로 마무리합니다.</p></div>
+    </div>
+    <div class="callout" style="margin-top:6px">
+      <b>공통 지식을 먼저 설명하는 이유</b><br>장애 상황에서는 어떤 CNI를 쓰는지보다, 통신이 어느 단계에서 실패하는지를 먼저 확인해야 합니다. 실패한 단계를 알면 확인할 컴포넌트가 정해지고, 그 컴포넌트를 CNI별 명령으로 확인하면 됩니다.
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:28px;font-size:17px;line-height:1.6;margin-top:4px">
+      <div class="sec"><h3>다루는 범위</h3><p>Pod-to-Pod, Pod-to-Service, External 통신 장애를 다룹니다. CNI, kube-proxy, DNS, IPAM, NetworkPolicy, Routing 문제를 포함합니다.</p></div>
+      <div class="sec"><h3>대상 CNI</h3><p>Flannel, Calico, Cilium 세 가지입니다. 같은 증상을 각 CNI에서 어떻게 확인하는지 비교합니다.</p></div>
+      <div class="sec"><h3>예시 출력 안내</h3><p>터미널 출력은 이해를 돕기 위해 구성한 예시입니다. 버전과 환경에 따라 실제 출력은 다를 수 있습니다.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 3. Path -->
+<section class="slide" data-t="통신 경로">
+  <h2>패킷이 지나가는 경로</h2>
+  <p class="sub">Pod A에서 <code>curl http://web</code> 을 실행했을 때 거치는 구간입니다. 테두리 색이 담당 영역을 나타냅니다.</p>
+  <div class="body" style="flex-direction:column;gap:0;margin-top:6px">
+  <svg viewBox="0 0 1168 440" width="1168" role="img" aria-label="Pod A에서 Pod B까지와 외부까지의 통신 경로">
+    <rect class="node" x="10" y="30" width="500" height="300" rx="10"/>
+    <rect class="node" x="658" y="30" width="500" height="300" rx="10"/>
+    <text x="24" y="54" font-size="16" font-weight="700">Node A (node1)</text>
+    <text x="672" y="54" font-size="16" font-weight="700">Node B (node2)</text>
+
+    <rect class="box" x="30" y="130" width="120" height="70" rx="6"/>
+    <text x="90" y="158" text-anchor="middle" font-size="16" font-weight="700">Pod A</text>
+    <text x="90" y="181" text-anchor="middle" class="m sm">10.244.1.5</text>
+
+    <line class="ln" x1="150" y1="165" x2="200" y2="165"/><text x="175" y="156" text-anchor="middle" class="sm">veth</text>
+
+    <rect class="box cni" x="200" y="110" width="140" height="110" rx="6"/>
+    <text x="270" y="146" text-anchor="middle" font-size="16" font-weight="700">CNI 데이터플레인</text>
+    <text x="270" y="170" text-anchor="middle" class="sm">bridge / route / eBPF</text>
+    <text x="270" y="192" text-anchor="middle" class="sm">+ NetworkPolicy</text>
+
+    <rect class="box svc" x="200" y="64" width="140" height="34" rx="6"/>
+    <text x="270" y="86" text-anchor="middle" font-size="14" font-weight="700">kube-proxy / eBPF</text>
+    <line class="ln" x1="270" y1="98" x2="270" y2="110"/>
+    <text x="352" y="86" class="sm">ClusterIP → Pod IP</text>
+
+    <line class="ln" x1="340" y1="165" x2="390" y2="165"/>
+    <rect class="box" x="390" y="130" width="110" height="70" rx="6"/>
+    <text x="445" y="158" text-anchor="middle" font-size="16" font-weight="700">eth0</text>
+    <text x="445" y="181" text-anchor="middle" class="m sm">192.168.10.11</text>
+
+    <line x1="500" y1="165" x2="668" y2="165" stroke="var(--r-net)" stroke-width="7"/>
+    <text x="584" y="140" text-anchor="middle" font-size="15" font-weight="700" style="fill:var(--r-net)">노드 네트워크</text>
+    <text x="584" y="196" text-anchor="middle" class="sm">VXLAN / BGP / IPIP</text>
+
+    <rect class="box" x="668" y="130" width="110" height="70" rx="6"/>
+    <text x="723" y="158" text-anchor="middle" font-size="16" font-weight="700">eth0</text>
+    <text x="723" y="181" text-anchor="middle" class="m sm">192.168.10.12</text>
+    <line class="ln" x1="778" y1="165" x2="828" y2="165"/>
+    <rect class="box cni" x="828" y="110" width="140" height="110" rx="6"/>
+    <text x="898" y="146" text-anchor="middle" font-size="16" font-weight="700">CNI 데이터플레인</text>
+    <text x="898" y="170" text-anchor="middle" class="sm">bridge / route / eBPF</text>
+    <text x="898" y="192" text-anchor="middle" class="sm">+ NetworkPolicy</text>
+    <line class="ln" x1="968" y1="165" x2="1018" y2="165"/><text x="993" y="156" text-anchor="middle" class="sm">veth</text>
+    <rect class="box" x="1018" y="130" width="120" height="70" rx="6"/>
+    <text x="1078" y="158" text-anchor="middle" font-size="16" font-weight="700">Pod B</text>
+    <text x="1078" y="181" text-anchor="middle" class="m sm">10.244.2.7</text>
+
+    <rect class="box dns" x="1018" y="250" width="120" height="50" rx="6"/>
+    <text x="1078" y="272" text-anchor="middle" font-size="15" font-weight="700">CoreDNS</text>
+    <text x="1078" y="291" text-anchor="middle" class="m sm">10.244.2.3</text>
+    <path d="M90 200 V275 H1018" fill="none" stroke="var(--r-dns)" stroke-width="2.5" stroke-dasharray="7 5"/>
+    <text x="300" y="267" class="sm" style="fill:var(--r-dns)">DNS 조회 (web → ClusterIP)</text>
+
+    <path d="M445 200 V402 H480" fill="none" stroke="var(--r-net)" stroke-width="2.5" stroke-dasharray="7 5"/>
+    <text x="458" y="352" class="sm">SNAT (masquerade)</text>
+    <rect class="box" x="480" y="382" width="208" height="42" rx="6"/>
+    <text x="584" y="408" text-anchor="middle" font-size="15" font-weight="700">클러스터 외부</text>
+
+    <g font-size="14">
+      <rect x="720" y="372" width="14" height="14" fill="none" stroke="var(--r-cni)" stroke-width="3"/><text x="742" y="384">CNI</text>
+      <rect x="800" y="372" width="14" height="14" fill="none" stroke="var(--r-svc)" stroke-width="3"/><text x="822" y="384">Service</text>
+      <rect x="900" y="372" width="14" height="14" fill="none" stroke="var(--r-dns)" stroke-width="3"/><text x="922" y="384">DNS</text>
+      <rect x="980" y="372" width="14" height="14" fill="none" stroke="var(--r-net)" stroke-width="3"/><text x="1002" y="384">노드 네트워크, 클라우드</text>
+    </g>
+  </svg>
+  <p style="font-size:18px;margin-top:4px">이름 조회, Service 변환, 노드 간 이동, SNAT 중 어느 한 곳만 실패해도 curl이 안 된다는 같은 증상으로 보입니다.</p>
+  </div>
+</section>
+
+<!-- 4. Stages and components -->
+<section class="slide" data-t="단계별 담당 컴포넌트">
+  <h2>통신 단계별 담당 컴포넌트</h2>
+  <p class="sub">실패한 단계를 알면 확인할 컴포넌트가 정해집니다.</p>
+  <div class="body" style="margin-top:16px">
+    <table class="tbl">
+      <thead><tr><th>통신 단계</th><th>담당 컴포넌트</th><th>하는 일</th><th>고장 났을 때 증상</th></tr></thead>
+      <tbody>
+        <tr><td>Pod 네트워크 생성</td><td>kubelet, CNI 플러그인, IPAM</td><td>Pod가 만들어질 때 IP를 할당하고 네트워크 인터페이스(veth)를 설정합니다.</td><td><code>ContainerCreating</code>, <code>FailedCreatePodSandBox</code></td></tr>
+        <tr><td>같은 노드의 Pod 간 통신</td><td>CNI 데이터플레인, NetworkPolicy 엔진</td><td>노드 안에서 Pod 사이 패킷을 전달하고 정책을 적용합니다.</td><td>같은 노드의 Pod끼리 timeout</td></tr>
+        <tr><td>다른 노드의 Pod 간 통신</td><td>CNI 노드 에이전트, 노드 네트워크</td><td>터널 또는 라우트로 다른 노드까지 패킷을 전달합니다.</td><td>다른 노드의 Pod만 불통, 큰 응답에서 멈춤(MTU)</td></tr>
+        <tr><td>Service 통신</td><td>kube-proxy 또는 eBPF, EndpointSlice</td><td>ClusterIP를 실제 Pod IP로 변환합니다.</td><td>ClusterIP만 timeout, Pod IP는 정상</td></tr>
+        <tr><td>DNS 이름 조회</td><td>CoreDNS, resolv.conf</td><td>서비스 이름을 ClusterIP로 변환합니다.</td><td>이름만 실패, IP는 정상</td></tr>
+        <tr><td>외부 통신</td><td>masquerade(SNAT), 노드 라우팅, 클라우드 NAT</td><td>Pod IP를 노드 IP로 바꿔 외부로 전달합니다.</td><td>외부 IP로도 timeout</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- 5. Facts -->
+<section class="slide" data-t="먼저 알아야 할 사실">
+  <h2>트러블슈팅 전에 알아야 할 사실</h2>
+  <p class="sub">현장에서 원인 파악이 늦어지는 경우는 대부분 아래 내용을 놓쳤을 때입니다.</p>
+  <div class="body" style="margin-top:18px;flex-direction:column;gap:18px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:22px 36px">
+      <div class="sec"><h3>ClusterIP는 ping이 되지 않는 경우가 많습니다</h3><p>ClusterIP는 실제 인터페이스에 붙은 주소가 아니라 변환 규칙에만 존재하는 가상 IP입니다. 확인할 때는 ping 대신 서비스 포트로 curl을 실행해야 합니다.</p></div>
+      <div class="sec"><h3>Pod가 Running이어도 네트워크가 정상이라는 뜻은 아닙니다</h3><p>Running은 컨테이너가 실행 중이라는 의미입니다. 정책, 라우트, DNS는 별도로 확인해야 합니다.</p></div>
+      <div class="sec"><h3>NetworkPolicy는 CNI가 지원해야 적용됩니다</h3><p>Flannel만 설치한 클러스터에서는 NetworkPolicy를 만들어도 트래픽이 차단되지 않습니다. Calico와 Cilium은 정책을 직접 적용합니다.</p></div>
+      <div class="sec"><h3>Service 장애의 원인은 kube-proxy보다 Endpoints인 경우가 많습니다</h3><p>selector 불일치나 readiness 실패로 EndpointSlice가 비어 있으면 kube-proxy가 정상이어도 연결되지 않습니다.</p></div>
+      <div class="sec"><h3>노드 간 통신은 클러스터 밖의 설정에도 영향을 받습니다</h3><p>방화벽, 보안 그룹, 클라우드 라우트 테이블이 터널 포트나 BGP를 막으면 CNI 설정이 정상이어도 통신되지 않습니다.</p></div>
+      <div class="sec"><h3>CNI 에이전트는 노드마다 하나씩 실행됩니다</h3><p>일부 노드에서만 문제가 생기면, 클러스터 전체가 아니라 그 노드의 에이전트 상태와 로그를 먼저 확인해야 합니다.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 6. Error messages -->
+<section class="slide" data-t="오류 메시지 해석">
+  <h2>오류 메시지로 원인 범위 좁히기</h2>
+  <p class="sub">같은 통신 실패라도 오류 메시지에 따라 확인할 곳이 달라집니다.</p>
+  <div class="body" style="margin-top:16px">
+    <div class="col" style="gap:12px;width:100%"><table class="tbl tight">
+      <thead><tr><th>오류</th><th>의미</th><th>먼저 확인할 곳</th></tr></thead>
+      <tbody>
+        <tr><td>Connection timed out</td><td>패킷이 중간에서 버려졌거나 응답이 돌아오지 않았습니다.</td><td>방화벽, NetworkPolicy, 라우트 누락, MTU</td></tr>
+        <tr><td>Connection refused</td><td>목적지 또는 중간 장비가 RST나 ICMP 응답으로 연결을 명시적으로 거부했습니다.</td><td>목적지 포트를 듣는 프로세스(<code>ss -ltnp</code>), targetPort, 중간의 REJECT 규칙(방화벽, 엔드포인트가 없는 Service)</td></tr>
+        <tr><td>No route to host</td><td>라우트가 없거나 ARP 해석에 실패했습니다. 방화벽이 icmp-host-prohibited로 거부한 경우에도 나옵니다.</td><td>노드 라우트, CNI 에이전트 상태, 호스트 방화벽 규칙</td></tr>
+        <tr><td>NXDOMAIN</td><td>DNS 서버는 응답했지만 해당 이름이 없습니다.</td><td>서비스 이름, 네임스페이스, 오타</td></tr>
+        <tr><td>no servers could be reached</td><td>DNS 서버까지 질의가 도달하지 못했습니다.</td><td>CoreDNS 상태, kube-dns Service, 53 포트 정책</td></tr>
+        <tr><td>작은 요청은 되고 큰 응답에서 멈춤</td><td>큰 패킷만 중간에서 버려지고 있습니다.</td><td>Pod와 노드의 MTU 설정</td></tr>
+      </tbody>
+    </table>
+    <div class="callout warn" style="font-size:16.5px"><b>refused를 받았을 때 구분하는 방법</b><br>목적지 쪽에서 캡처했을 때 SYN이 도착하고 RST가 나가면 애플리케이션 문제입니다. SYN이 도착하지 않았는데 refused를 받았다면 중간에서 거부한 것입니다. Calico와 Cilium의 정책은 차단한 패킷을 기본적으로 버리므로 timeout으로 보이는 경우가 대부분이지만, 방화벽의 REJECT 규칙은 refused로 보일 수 있습니다.</div></div>
+  </div>
+</section>
+
+<!-- 7. Scope + first commands -->
+<section class="slide" data-t="영향 범위와 기본 점검">
+  <h2>기본 점검 순서: 영향 범위부터 확인합니다</h2>
+  <p class="sub">어디서, 무엇이 안 되는지를 먼저 확인하면 점검 대상이 크게 줄어듭니다.</p>
+  <div class="body" style="margin-top:16px">
+    <div class="col" style="flex:1">
+      <table class="tbl tight">
+        <thead><tr><th>영향 범위</th><th>먼저 확인할 곳</th></tr></thead>
+        <tbody>
+          <tr><td>클러스터 전체</td><td>CNI 설정 변경 이력, CoreDNS, 컨트롤 플레인</td></tr>
+          <tr><td>특정 노드만</td><td>그 노드의 CNI 에이전트, kube-proxy, IP 블록, 커널, 방화벽</td></tr>
+          <tr><td>특정 네임스페이스나 Pod</td><td>NetworkPolicy, Service selector, readiness</td></tr>
+          <tr><td>특정 목적지만</td><td>외부 방화벽, 라우팅, 해당 도메인의 DNS</td></tr>
+        </tbody>
+      </table>
+      <div class="callout" style="font-size:17px"><b>점검 순서</b><br>영향 범위 확인, 노드와 시스템 Pod 상태 확인, 이벤트와 로그 확인, 통신 단계별 확인, 패킷 캡처 순서로 진행합니다.</div>
+      <div class="callout warn" style="font-size:15.5px"><b>설치 namespace는 설치 방법에 따라 다릅니다.</b> Flannel은 kube-flannel(이전 매니페스트는 kube-system), Calico는 calico-system(매니페스트 설치는 kube-system), Cilium은 보통 kube-system에 설치됩니다. 그래서 <code>-A</code> 옵션으로 먼저 찾습니다. CNI 에이전트는 노드마다 하나씩 있으므로 문제가 있는 노드의 Pod 로그를 확인합니다.</div>
+    </div>
+    <div class="term" style="flex:1.1">
+      <div class="bar">공통으로 먼저 실행하는 명령</div>
+<pre><span class="d"># 1. 노드와 네트워크 시스템 Pod 상태 (모든 namespace)</span>
+<span class="c">$ kubectl get nodes -o wide</span>
+<span class="c">$ kubectl get pods -A -o wide \
+    | grep -E 'flannel|calico|cilium|kube-proxy|coredns'</span>
+
+<span class="d"># 2. 비정상 Pod와 이벤트</span>
+<span class="c">$ kubectl get pods -A -o wide | grep -v Running</span>
+<span class="c">$ kubectl describe pod &lt;pod&gt; | sed -n '/Events/,$p'</span>
+
+<span class="d"># 3. 문제 노드의 CNI Pod를 찾아 로그 확인</span>
+<span class="c">$ kubectl get pods -A -o wide --field-selector \
+    spec.nodeName=&lt;node&gt; | grep -E 'flannel|calico|cilium'</span>
+<span class="c">$ kubectl -n &lt;namespace&gt; logs &lt;cni-pod&gt; --tail=50</span>
+
+<span class="d"># 4. 디버그 Pod에서 통신 확인</span>
+<span class="c">$ kubectl run netshoot --image=nicolaka/netshoot \
+    -it --rm -- bash</span>
+
+<span class="d"># 5. 노드에서 패킷 확인</span>
+<span class="c">$ sudo tcpdump -ni any host &lt;ip&gt; -c 20</span></pre>
+    </div>
+  </div>
+</section>
+
+<!-- 8. Stage-by-stage check (interactive) -->
+<section class="slide" data-t="단계별 확인">
+  <h2>통신 단계별 확인 방법</h2>
+  <p class="sub">디버그 Pod에서 아래 순서대로 실행합니다. 처음 실패한 항목을 선택하면 원인 후보가 나옵니다.</p>
+  <div class="body" style="margin-top:16px">
+    <div class="steps" role="group" aria-label="처음 실패한 확인 항목을 선택">
+      <button class="step" data-k="1"><span class="lv">1</span><span><span class="cm">ip addr, ip route (Pod 안에서)</span><span class="ad">Pod 네트워크 생성: IP와 기본 경로가 있는지 확인합니다.</span></span></button>
+      <button class="step" data-k="2"><span class="lv">2</span><span><span class="cm">curl http://10.244.1.9 (같은 노드의 Pod)</span><span class="ad">같은 노드의 Pod 간 통신과 NetworkPolicy를 확인합니다.</span></span></button>
+      <button class="step" data-k="3"><span class="lv">3</span><span><span class="cm">curl http://10.244.2.7 (다른 노드의 Pod)</span><span class="ad">노드 간 경로를 확인합니다. 터널, BGP, 노드 네트워크가 포함됩니다.</span></span></button>
+      <button class="step" data-k="4"><span class="lv">4</span><span><span class="cm">curl http://10.96.12.34 (ClusterIP)</span><span class="ad">Service 변환을 확인합니다. kube-proxy 또는 eBPF가 포함됩니다.</span></span></button>
+      <button class="step" data-k="5"><span class="lv">5</span><span><span class="cm">curl http://web.shop.svc</span><span class="ad">DNS 이름 조회를 확인합니다. CoreDNS가 포함됩니다.</span></span></button>
+      <button class="pick" data-k="0">전부 성공했는데 애플리케이션이 동작하지 않습니다</button>
+    </div>
+    <div id="verdict" aria-live="polite"></div>
+  </div>
+</section>
+
+<!-- 9. Worked example -->
+<section class="slide" data-t="확인 예시">
+  <h2>확인 예시: 다른 노드의 Pod에 접속되지 않습니다</h2>
+  <p class="sub">web.shop.svc 호출이 실패하는 상황에서, 앞 슬라이드의 순서대로 확인한 결과입니다.</p>
+  <div class="body" style="margin-top:14px">
+    <div class="term" style="flex:1.35">
+      <div class="bar">kubectl exec netshoot (node1에서 실행 중인 Pod)</div>
+<pre><span class="d"># 확인 1: Pod 안의 네트워크 설정</span>
+<span class="c">$ ip route</span>
+<span class="ok">default via 10.244.1.1 dev eth0</span>        <span class="d"># 정상</span>
+
+<span class="d"># 확인 2: 같은 노드의 Pod</span>
+<span class="c">$ curl -m3 -s -o /dev/null -w '%{http_code}\n' http://10.244.1.9:8080</span>
+<span class="hlok"><span class="ok">200</span>                                  <span class="d"># 성공</span></span>
+
+<span class="d"># 확인 3: 다른 노드(node2)의 Pod</span>
+<span class="c">$ curl -m3 -s -o /dev/null -w '%{http_code}\n' http://10.244.2.7:8080</span>
+<span class="hlbad"><span class="bad">000</span>                                  <span class="d"># 처음 실패한 항목</span></span>
+
+<span class="d"># 패킷이 어디까지 가는지 양쪽 노드에서 캡처</span>
+<span class="w">node1$</span> <span class="c">tcpdump -ni eth0 udp port 8472 -c 2</span>
+IP 192.168.10.11.41234 &gt; 192.168.10.12.8472: OTV
+IP 192.168.10.11.41234 &gt; 192.168.10.12.8472: OTV
+<span class="w">node2$</span> <span class="c">tcpdump -ni eth0 udp port 8472 -c 2</span>
+<span class="hlbad"><span class="bad">0 packets captured</span>   <span class="d"># 보냈는데 도착하지 않음</span></span></pre>
+    </div>
+    <div class="col" style="flex:1">
+      <div class="sec"><h3>결과 해석</h3><p>같은 노드의 Pod는 성공하고 다른 노드의 Pod에서 처음 실패했으므로, 원인은 노드 간 경로에 있습니다. Pod 네트워크 생성과 같은 노드 통신은 확인할 필요가 없습니다.</p></div>
+      <div class="sec"><h3>양쪽 노드에서 캡처하는 이유</h3><p>보내는 노드에는 패킷이 보이는데 받는 노드에 없다면, 두 노드 사이의 방화벽, 보안 그룹, 스위치를 확인해야 합니다.</p></div>
+      <div class="callout warn" style="font-size:17px">두 노드에서 모두 패킷이 보이는데도 통신되지 않는다면, 수신 노드에서 캡슐을 풀어 Pod로 전달하는 CNI 쪽을 확인해야 합니다.</div>
+    </div>
+  </div>
+</section>
+
+<!-- 10. CNI matrix -->
+<section class="slide" data-t="CNI 비교">
+  <h2>CNI별로 같은 단계를 확인하는 방법</h2>
+  <p class="sub">통신 단계는 모든 CNI에서 같습니다. 그 단계를 구현하는 컴포넌트와 확인 명령이 CNI마다 다릅니다.</p>
+  <div class="body" style="margin-top:14px">
+    <table class="tbl tight">
+      <thead><tr><th>통신 단계</th><th><span class="chip flannel">Flannel</span></th><th><span class="chip calico">Calico</span></th><th><span class="chip cilium">Cilium</span></th></tr></thead>
+      <tbody>
+        <tr><td>Pod 네트워크 생성 (IPAM)</td><td>노드 podCIDR와 host-local IPAM을 사용합니다. 브리지는 <code>cni0</code> 입니다.</td><td>IPPool을 노드별 /26 블록으로 나눠 할당합니다. veth는 <code>cali*</code> 입니다.</td><td>cluster-pool IPAM(CiliumNode)을 사용합니다. veth는 <code>lxc*</code> 입니다.</td></tr>
+        <tr><td>같은 노드의 Pod 간 통신</td><td>브리지가 전달합니다.</td><td>Pod IP별 호스트 라우트와 iptables 또는 eBPF가 전달합니다.</td><td>veth에 로드된 eBPF 프로그램이 전달합니다.</td></tr>
+        <tr><td>다른 노드의 Pod 간 통신</td><td>VXLAN 장치 <code>flannel.1</code> (UDP 8472)</td><td>BGP 라우트(TCP 179), 필요하면 IPIP 또는 VXLAN</td><td>VXLAN/Geneve 터널 또는 native 라우팅</td></tr>
+        <tr><td>Service 통신</td><td>kube-proxy (iptables, IPVS)</td><td>kube-proxy가 기본이며 eBPF 모드도 선택할 수 있습니다.</td><td>kube-proxy를 대체하며 eBPF 맵을 사용합니다.</td></tr>
+        <tr><td>NetworkPolicy</td><td><span class="fail">지원하지 않습니다.</span> 정책을 만들어도 적용되지 않습니다.</td><td>Felix가 iptables 또는 eBPF로 적용합니다.</td><td>identity 기반으로 적용하며 Hubble로 드롭 사유를 확인합니다.</td></tr>
+        <tr><td>가장 먼저 실행할 명령</td><td><code>subnet.env</code>, <code>ip route</code>, <code>bridge fdb</code></td><td><code>calicoctl node status</code>, <code>calicoctl ipam show</code></td><td><code>cilium-dbg status</code>, <code>hubble observe</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- 11. Flannel -->
+<section class="slide" data-t="Flannel">
+  <h2><span class="chip flannel">Flannel</span>가장 단순한 오버레이 CNI</h2>
+  <p class="sub">구조가 단순해서 통신 단계와 컴포넌트가 거의 1대1로 대응합니다. 대신 NetworkPolicy는 지원하지 않습니다.</p>
+  <div class="body" style="margin-top:16px">
+    <div class="col flannel-t" style="flex:1">
+      <div class="sec"><h3>컴포넌트와 담당 영역</h3>
+        <ul>
+          <li><b>kube-controller-manager</b>가 노드마다 podCIDR를 할당합니다.</li>
+          <li><b>flanneld</b>가 서브넷 정보를 <code>subnet.env</code> 에 기록하고, VXLAN 장치 <code>flannel.1</code> 과 FDB를 관리합니다.</li>
+          <li><b>CNI 플러그인</b>(bridge, host-local)이 veth를 <code>cni0</code> 에 연결하고 IP를 할당합니다.</li>
+        </ul></div>
+      <div class="sec"><h3>이 증상이면 이 컴포넌트를 확인합니다</h3>
+        <ul>
+          <li>flanneld가 반복 재시작합니다. 노드의 <code>.spec.podCIDR</code> 가 비어 있는지 확인합니다.</li>
+          <li>Pod 생성에 실패합니다. host-local 할당 파일과 서브넷 고갈 여부를 확인합니다.</li>
+          <li>다른 노드로만 통신되지 않습니다. <code>flannel.1</code>, fdb, UDP 8472를 확인합니다.</li>
+          <li>정책이 적용되지 않습니다. Flannel에는 정책 엔진이 없습니다.</li>
+        </ul></div>
+    </div>
+    <div class="term" style="flex:1.2">
+      <div class="bar">node1</div>
+<pre><span class="c">$ cat /run/flannel/subnet.env</span>
+FLANNEL_NETWORK=10.244.0.0/16
+FLANNEL_SUBNET=10.244.1.1/24
+<span class="hl">FLANNEL_MTU=1450         <span class="d"># 1500 - VXLAN 50바이트</span></span>
+FLANNEL_IPMASQ=true
+
+<span class="c">$ ip route | grep -E 'cni0|flannel'</span>
+<span class="hlok">10.244.1.0/24 dev cni0 proto kernel scope link</span>
+<span class="hlok">10.244.2.0/24 via 10.244.2.0 dev flannel.1 onlink</span>
+
+<span class="c">$ bridge fdb show dev flannel.1</span>
+5a:1c:7e:90:2b:44 dst 192.168.10.12 self permanent
+
+<span class="d"># cni0 경로: 같은 노드 통신
+# flannel.1 경로: 다른 노드 통신
+# 두 경로가 모두 있는데 통신이 안 되면 노드 네트워크를 확인합니다.</span></pre>
+    </div>
+  </div>
+</section>
+
+<!-- 12. Calico -->
+<section class="slide" data-t="Calico">
+  <h2><span class="chip calico">Calico</span>라우팅과 NetworkPolicy 중심 CNI</h2>
+  <p class="sub">컴포넌트 역할이 나뉘어 있어서 라우트 문제와 정책 문제를 구분해서 확인할 수 있습니다.</p>
+  <div class="body" style="margin-top:16px">
+    <div class="col calico-t" style="flex:1">
+      <div class="sec"><h3>컴포넌트와 담당 영역</h3>
+        <ul>
+          <li><b>calico-ipam</b>이 IPPool을 노드별 /26 블록으로 나눠 할당합니다.</li>
+          <li><b>Felix</b>가 노드의 라우트와 정책(iptables 또는 eBPF)을 설정합니다.</li>
+          <li><b>BIRD</b>가 BGP로 Pod 블록 라우트를 다른 노드와 교환합니다.</li>
+          <li><b>kube-controllers, Typha</b>가 리소스를 동기화하고 대규모 클러스터에서 부하를 분산합니다.</li>
+        </ul></div>
+      <div class="sec"><h3>이 증상이면 이 컴포넌트를 확인합니다</h3>
+        <ul>
+          <li>Pod 생성에 실패합니다. IPPool과 블록 사용량을 확인합니다.</li>
+          <li>다른 노드로만 통신되지 않습니다. BGP peer 상태와 IPIP(IP 프로토콜 4) 허용 여부를 확인합니다.</li>
+          <li>특정 통신만 차단됩니다. 정책, <code>cali-*</code> 체인, Felix 로그를 확인합니다.</li>
+        </ul></div>
+    </div>
+    <div class="term" style="flex:1.2">
+      <div class="bar">node1</div>
+<pre><span class="c">$ sudo calicoctl node status</span>
+IPv4 BGP status
+| PEER ADDRESS  | PEER TYPE         | STATE |
+<span class="hlbad">| 192.168.10.12 | node-to-node mesh | <span class="bad">start</span> |</span>
+<span class="d">  Info: Active Socket: Connection refused</span>
+
+<span class="c">$ ip route | grep -E 'bird|blackhole|cali'</span>
+blackhole 10.244.1.128/26 proto bird
+10.244.1.130 dev cali1a2b3c4d5e6 scope link
+<span class="hlbad"><span class="d"># 10.244.2.0/26 via 192.168.10.12 가 없습니다</span></span>
+
+<span class="d"># 정상이라면 아래 라우트가 보여야 합니다
+# 10.244.2.0/26 via 192.168.10.12 dev eth0 proto bird
+# 라우트가 없으면 BIRD와 BGP(TCP 179)를 확인합니다.
+# 라우트가 있는데 통신이 안 되면 노드 네트워크를 확인합니다.</span></pre>
+    </div>
+  </div>
+</section>
+
+<!-- 13. Cilium -->
+<section class="slide" data-t="Cilium">
+  <h2><span class="chip cilium">Cilium</span>eBPF 기반 CNI</h2>
+  <p class="sub">iptables 규칙 대신 eBPF 맵을 확인합니다. Hubble로 드롭된 사유를 직접 볼 수 있습니다.</p>
+  <div class="body" style="margin-top:16px">
+    <div class="col cilium-t" style="flex:1">
+      <div class="sec"><h3>컴포넌트와 담당 영역</h3>
+        <ul>
+          <li><b>cilium-agent</b>가 eBPF 프로그램을 로드하고 endpoint, identity, Service 맵을 관리합니다.</li>
+          <li><b>cilium-operator</b>가 IPAM(CiliumNode)을 할당하고 CRD를 정리합니다.</li>
+          <li><b>터널 또는 native 라우팅</b>이 노드 간 전달 방식을 결정합니다.</li>
+          <li><b>Hubble</b>이 플로우별 verdict와 드롭 사유를 보여줍니다.</li>
+        </ul></div>
+      <div class="sec"><h3>이 증상이면 이 컴포넌트를 확인합니다</h3>
+        <ul>
+          <li>정책 때문에 차단됩니다. <code>hubble observe --verdict DROPPED</code> 를 실행합니다.</li>
+          <li>Service 접속이 안 됩니다. <code>cilium-dbg service list</code> 와 kube-proxy 공존 여부를 확인합니다.</li>
+          <li>다른 노드로만 통신되지 않습니다. Cluster health와 터널 포트를 확인합니다.</li>
+          <li>endpoint가 비정상입니다. agent 로그와 <code>endpoint list</code> 를 확인합니다.</li>
+        </ul></div>
+    </div>
+    <div class="term" style="flex:1.2">
+      <div class="bar">cilium-agent (node1)</div>
+<pre><span class="c">$ cilium-dbg status | grep -E 'KubeProxy|health|Controller'</span>
+KubeProxyReplacement:  True
+Controller Status:     41/41 healthy
+<span class="hlbad">Cluster health:        <span class="bad">1/2 reachable</span></span>
+
+<span class="c">$ cilium-dbg service list | head -3</span>
+ID  Frontend         Type       Backend
+12  10.96.12.34:80   ClusterIP  1 =&gt; 10.244.2.7:8080 (active)
+
+<span class="c">$ hubble observe --verdict DROPPED --last 2</span>
+<span class="hlbad">shop/web (ID:4821) &lt;&gt; shop/db-0:5432 (ID:1733)
+  Policy denied DROPPED (TCP Flags: SYN)</span>
+
+<span class="d"># agent는 정상인데 1/2 reachable이면 노드 간 경로를 확인합니다.
+# DROPPED와 Policy denied가 보이면 정책이 원인입니다.</span></pre>
+    </div>
+  </div>
+</section>
+
+<!-- ===== CASE 1 ===== -->
+<section class="slide" data-t="사례 1-1 Pod 생성">
+  <h2>사례 1-1. Pod 생성 실패: 원인 분류</h2>
+  <p class="sub">증상: 배포한 Pod 일부가 <code>ContainerCreating</code> 에서 멈추고, 특정 노드에 몰려 있습니다. 이벤트 메시지가 어느 단계에서 실패했는지 알려줍니다.</p>
+  <div class="body" style="flex-direction:column;gap:14px;margin-top:14px">
+    <svg viewBox="0 0 1168 112" width="1168" role="img" aria-label="Pod 생성 과정과 단계별 실패 지점">
+      <g>
+        <rect class="box" x="0" y="4" width="232" height="60" rx="6"/>
+        <rect class="box" x="312" y="4" width="232" height="60" rx="6"/>
+        <rect class="box cni" x="624" y="4" width="232" height="60" rx="6"/>
+        <rect class="box cni" x="936" y="4" width="232" height="60" rx="6"/>
+      </g>
+      <g class="ah"><polygon points="302,28 312,34 302,40"/><polygon points="614,28 624,34 614,40"/><polygon points="926,28 936,34 926,40"/></g>
+      <line class="ln" x1="232" y1="34" x2="302" y2="34"/><line class="ln" x1="544" y1="34" x2="614" y2="34"/><line class="ln" x1="856" y1="34" x2="926" y2="34"/>
+      <g text-anchor="middle">
+        <text x="116" y="30" font-size="16" font-weight="700">kubelet</text><text x="116" y="50" class="sm">Pod 스펙을 받아 실행 요청</text>
+        <text x="428" y="30" font-size="16" font-weight="700">컨테이너 런타임(CRI)</text><text x="428" y="50" class="sm">샌드박스(pause) 컨테이너 생성</text>
+        <text x="740" y="30" font-size="16" font-weight="700">CNI 플러그인 호출</text><text x="740" y="50" class="sm">/etc/cni/net.d, /opt/cni/bin</text>
+        <text x="1052" y="30" font-size="16" font-weight="700">IPAM, 인터페이스 설정</text><text x="1052" y="50" class="sm">IP 할당, veth 생성, 라우트 설정</text>
+        <text x="116" y="94" class="fl">노드 상태, 스케줄링 (CNI 외 원인)</text>
+        <text x="428" y="94" class="fl">런타임 오류 (CNI 외 원인)</text>
+        <text x="740" y="94" class="fl">설정 없음, 바이너리 없음, 에이전트 미기동</text>
+        <text x="1052" y="94" class="fl">IP 소진, API 서버와 에이전트 접근 실패</text>
+      </g>
+    </svg>
+    <table class="tbl tight">
+      <thead><tr><th>이벤트 또는 노드 상태 메시지</th><th>의미</th><th>확인할 컴포넌트</th></tr></thead>
+      <tbody>
+        <tr><td><code>cni plugin not initialized</code>, <code>cni config uninitialized</code></td><td>노드에 CNI 설정 파일이 없습니다. 노드가 NotReady로 표시되기도 합니다.</td><td>해당 노드의 CNI DaemonSet Pod, <code>/etc/cni/net.d</code></td></tr>
+        <tr><td><code>failed to find plugin "flannel" in path [/opt/cni/bin]</code></td><td>CNI 바이너리가 설치되지 않았습니다.</td><td>CNI 설치용 init 컨테이너</td></tr>
+        <tr><td><code>open /run/flannel/subnet.env: no such file or directory</code></td><td>flanneld가 서브넷 정보를 만들지 못했습니다.</td><td>flanneld Pod 상태와 로그</td></tr>
+        <tr><td><code>no IP addresses available in range set</code></td><td>노드에 할당된 서브넷의 IP가 모두 사용 중입니다.</td><td>IPAM 할당 현황</td></tr>
+        <tr><td><code>dial tcp 10.96.0.1:443: i/o timeout</code> (Calico)</td><td>CNI 플러그인이 Service IP로 API 서버에 접근하지 못했습니다.</td><td>Service 통신(사례 3), 토큰과 인증서</td></tr>
+        <tr><td><code>unable to connect to Cilium daemon ... cilium.sock</code></td><td>cilium-agent가 실행 중이 아니라 소켓이 없습니다.</td><td>해당 노드의 cilium-agent</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="slide" data-t="사례 1-2 Pod 생성">
+  <h2>사례 1-2. Pod 생성 실패: 확인과 조치</h2>
+  <p class="sub">IP 소진 메시지가 나온 경우를 따라갑니다. 할당된 IP 수와 실제 Pod 수를 비교하면 원인이 구분됩니다.</p>
+  <div class="body" style="margin-top:14px">
+    <div class="col" style="flex:.85">
+      <div class="sec"><h3>확인 순서</h3>
+        <ul>
+          <li>노드가 Ready인지 확인합니다. NotReady이면 CNI 설정부터 확인합니다.</li>
+          <li>이벤트 메시지를 앞 슬라이드의 표로 분류합니다.</li>
+          <li>해당 노드의 CNI Pod 상태와 로그를 확인합니다.</li>
+          <li>IP 문제라면 할당된 IP 수와 실제 실행 중인 Pod 수를 비교합니다.</li>
+        </ul></div>
+      <div class="sec"><h3>조치</h3>
+        <ul>
+          <li><b>임시</b>: 남은 할당을 정리하거나, 노드를 cordon한 뒤 Pod를 다른 노드로 옮깁니다.</li>
+          <li><b>근본</b>: 노드당 최대 Pod 수보다 여유 있게 노드 CIDR과 풀 크기를 정합니다.</li>
+          <li><b>재발 방지</b>: 사용률 알림을 설정하고, 노드가 비정상 종료된 뒤에는 남은 할당을 확인합니다.</li>
+        </ul></div>
+      <div class="callout" style="font-size:16px"><span class="chip cilium">Cilium</span> <code>cilium-dbg status | grep IPAM</code> 로 노드별 사용량을 확인합니다. 예: <code>IPv4: 38/254 allocated</code></div>
+    </div>
+    <div class="col" style="flex:1.25;gap:12px">
+      <div class="term">
+        <div class="bar">Flannel: 남은 할당 찾기 (node1)</div>
+<pre><span class="c">$ ls /var/lib/cni/networks/cbr0 | grep -c '^10\.'</span>
+254
+<span class="c">$ kubectl get pods -A -o wide --no-headers \
+    --field-selector spec.nodeName=node1 | wc -l</span>
+41
+<span class="c">$ for f in /var/lib/cni/networks/cbr0/10.*; do
+&gt;   crictl inspectp $(cat $f) &gt;/dev/null 2&gt;&amp;1 || echo stale $f
+&gt; done</span>
+<span class="hlbad"><span class="bad">stale /var/lib/cni/networks/cbr0/10.244.1.17</span>  <span class="d">... 213개</span></span>
+<span class="d"># 할당 254개, 실제 Pod 41개: 해당 샌드박스가 없는 할당이 남아 있습니다.</span></pre>
+      </div>
+      <div class="term">
+        <div class="bar">Calico: 풀 사용량과 남은 할당</div>
+<pre><span class="c">$ calicoctl ipam show --show-blocks</span>
+| IP Pool | 10.244.0.0/24 | 256 | 250 (98%) | 6 (2%) |
+| Block   | 10.244.0.0/26 |  64 |  61 (95%) | 3 (5%) |
+<span class="c">$ calicoctl ipam check</span>
+<span class="hlbad"><span class="bad">Found 12 IPs allocated with no matching Pod</span>   <span class="d">(요약)</span></span>
+<span class="c">$ calicoctl ipam release --ip=10.244.0.17</span>
+<span class="d"># /24 풀에는 /26 블록이 4개뿐이라 노드가 늘면 빠르게 소진됩니다.</span></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== CASE 2 ===== -->
+<section class="slide" data-t="사례 2-1 노드 간 통신">
+  <h2>사례 2-1. 다른 노드 통신 실패: 원인 분기</h2>
+  <p class="sub">증상: 같은 노드의 Pod는 응답하는데 다른 노드의 Pod는 timeout입니다. 패킷이 어디까지 도착하는지에 따라 원인이 갈립니다.</p>
+  <div class="body" style="margin-top:14px;gap:24px">
+    <svg viewBox="0 0 640 440" width="610" style="flex:none" role="img" aria-label="노드 간 통신 실패 시 확인 흐름">
+      <g>
+        <rect class="box cni" x="0" y="0" width="300" height="70" rx="6"/>
+        <rect class="box cni" x="0" y="110" width="300" height="70" rx="6"/>
+        <rect class="box cni" x="0" y="220" width="300" height="70" rx="6"/>
+        <rect class="box cni" x="0" y="330" width="300" height="70" rx="6"/>
+        <rect class="box" x="350" y="0" width="290" height="70" rx="6"/>
+        <rect class="box" x="350" y="110" width="290" height="70" rx="6"/>
+        <rect class="box" x="350" y="220" width="290" height="70" rx="6"/>
+        <rect class="box" x="350" y="330" width="290" height="70" rx="6"/>
+        <rect class="box" x="0" y="420" width="300" height="20" rx="4" style="stroke:var(--ok);stroke-width:2"/>
+      </g>
+      <g class="ah"><polygon points="140,100 150,110 160,100"/><polygon points="140,210 150,220 160,210"/><polygon points="140,320 150,330 160,320"/><polygon points="140,410 150,420 160,410"/>
+        <polygon points="340,29 350,35 340,41"/><polygon points="340,139 350,145 340,151"/><polygon points="340,249 350,255 340,261"/><polygon points="340,359 350,365 340,371"/></g>
+      <g stroke="var(--ink)" stroke-width="2"><line x1="150" y1="70" x2="150" y2="100"/><line x1="150" y1="180" x2="150" y2="210"/><line x1="150" y1="290" x2="150" y2="320"/><line x1="150" y1="400" x2="150" y2="410"/>
+        <line x1="300" y1="35" x2="340" y2="35"/><line x1="300" y1="145" x2="340" y2="145"/><line x1="300" y1="255" x2="340" y2="255"/><line x1="300" y1="365" x2="340" y2="365"/></g>
+      <g font-size="14">
+        <text x="158" y="92" class="sm">예</text><text x="158" y="202" class="sm">예</text><text x="158" y="312" class="sm">예</text>
+        <text x="304" y="26" class="sm">아니오</text><text x="304" y="136" class="sm">아니오</text><text x="304" y="246" class="sm">아니오</text><text x="304" y="356" class="sm">아니오</text>
+      </g>
+      <g text-anchor="middle" font-size="15">
+        <text x="150" y="30" font-weight="700">노드 간 라우트 또는</text><text x="150" y="52">터널 장치가 있습니까?</text>
+        <text x="150" y="140" font-weight="700">송신 노드 eth0에서 캡슐화된</text><text x="150" y="162">패킷이 나갑니까?</text>
+        <text x="150" y="250" font-weight="700">수신 노드 eth0에</text><text x="150" y="272">패킷이 도착합니까?</text>
+        <text x="150" y="360" font-weight="700">수신 노드에서 캡슐을 푼 뒤</text><text x="150" y="382">패킷이 보입니까?</text>
+        <text x="495" y="30" font-weight="700">CNI 에이전트 문제</text><text x="495" y="52" class="sm">로그, BGP 상태, FDB 확인</text>
+        <text x="495" y="140" font-weight="700">송신 노드 로컬 문제</text><text x="495" y="162" class="sm">대상 주소, 설정 불일치, rp_filter</text>
+        <text x="495" y="250" font-weight="700">중간 경로 문제</text><text x="495" y="272" class="sm">방화벽, 보안 그룹, 클라우드 라우트</text>
+        <text x="495" y="360" font-weight="700">수신 노드 문제</text><text x="495" y="382" class="sm">VNI, 포트 불일치, rp_filter, 체크섬</text>
+        <text x="150" y="435" font-size="13" style="fill:var(--ok)">정책 또는 목적지 Pod 확인 (사례 5)</text>
+      </g>
+    </svg>
+    <table class="tbl tight" style="align-self:flex-start">
+      <thead><tr><th>원인 후보</th><th>나타나는 증거</th></tr></thead>
+      <tbody>
+        <tr><td>방화벽, 보안 그룹</td><td>송신 노드에는 패킷이 있고 수신 노드에는 없습니다.</td></tr>
+        <tr><td>CNI 에이전트 이상</td><td>다른 노드로 가는 라우트나 FDB 항목이 없습니다.</td></tr>
+        <tr><td>설정 불일치</td><td>노드마다 backend, VNI, 포트, IPIP 모드가 다릅니다.</td></tr>
+        <tr><td>rp_filter</td><td>수신 노드 eth0에는 도착하는데 터널 장치에서 사라집니다.</td></tr>
+        <tr><td>체크섬 오프로드</td><td>커널과 NIC 드라이버 조합에 따라 VXLAN 패킷이 폐기됩니다.</td></tr>
+        <tr><td>클라우드 라우트</td><td>native 라우팅 사용 시 Pod CIDR 라우트나 source/dest check가 원인입니다.</td></tr>
+        <tr><td>MTU</td><td>ping은 되고 큰 응답에서 멈춥니다.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="slide" data-t="사례 2-2 노드 간 통신">
+  <h2>사례 2-2. 다른 노드 통신 실패: 확인과 조치</h2>
+  <p class="sub">양쪽 노드의 캡처를 비교해서 패킷이 사라지는 지점을 찾고, 해당 지점의 허용 설정을 확인합니다.</p>
+  <div class="body" style="margin-top:14px">
+    <div class="col" style="flex:.8">
+      <table class="tbl tight">
+        <thead><tr><th>CNI와 방식</th><th>허용할 트래픽</th></tr></thead>
+        <tbody>
+          <tr><td>Flannel VXLAN</td><td>UDP 8472</td></tr>
+          <tr><td>Calico BGP</td><td>TCP 179</td></tr>
+          <tr><td>Calico IPIP</td><td>IP 프로토콜 4</td></tr>
+          <tr><td>Calico VXLAN</td><td>UDP 4789</td></tr>
+          <tr><td>Calico Typha</td><td>TCP 5473</td></tr>
+          <tr><td>Cilium VXLAN</td><td>UDP 8472</td></tr>
+          <tr><td>Cilium Geneve</td><td>UDP 6081</td></tr>
+          <tr><td>Cilium health</td><td>TCP 4240, ICMP</td></tr>
+        </tbody>
+      </table>
+      <div class="callout warn" style="font-size:15.5px">포트는 기본값이며 설정에 따라 다를 수 있습니다. 클라우드 보안 그룹은 IPIP(프로토콜 4)를 TCP/UDP 규칙과 별도로 허용해야 합니다.</div>
+      <div class="callout" style="font-size:15.5px"><b>MTU 확인</b><br><code>ping -M do -s 1422 &lt;Pod IP&gt;</code> 는 되고 <code>-s 1472</code> 는 실패하면, Pod MTU가 1450인 정상 상태입니다. 둘 다 실패하거나 큰 응답만 멈추면 MTU를 맞춰야 합니다.</div>
+    </div>
+    <div class="col" style="flex:1.3;gap:12px">
+      <div class="term">
+        <div class="bar">Flannel: 양쪽 노드 캡처 비교</div>
+<pre><span class="w">node1$</span> <span class="c">tcpdump -ni eth0 udp port 8472 -c 1</span>
+IP 192.168.10.11.41234 &gt; 192.168.10.12.8472: OTV   <span class="d"># 송신 확인</span>
+<span class="w">node2$</span> <span class="c">tcpdump -ni eth0 udp port 8472 -c 1</span>
+<span class="hlbad"><span class="bad">0 packets captured</span>        <span class="d"># 도착하지 않음: 중간 경로를 확인합니다.</span></span>
+
+<span class="d"># 도착하는데 통신이 안 된다면 수신 노드에서 계속 확인합니다.</span>
+<span class="w">node2$</span> <span class="c">tcpdump -ni flannel.1 icmp -c 1</span>
+<span class="d">0 packets captured    # 터널 장치에서 사라지면 rp_filter, VNI를 확인합니다.</span>
+<span class="w">node2$</span> <span class="c">sysctl net.ipv4.conf.all.rp_filter</span>
+net.ipv4.conf.all.rp_filter = 1</pre>
+      </div>
+      <div class="term">
+        <div class="bar">Calico와 Cilium</div>
+<pre><span class="c">$ calicoctl node status | grep -E 'PEER|mesh'</span>
+<span class="hlbad">| 192.168.10.12 | node-to-node mesh | <span class="bad">start</span> |   <span class="d"># Established가 아닙니다.</span></span>
+<span class="c">$ calicoctl get ippool -o wide</span>
+default  10.244.0.0/16  true  Always  Never   <span class="d"># IPIP 사용 중</span>
+<span class="w">node1$</span> <span class="c">tcpdump -ni eth0 ip proto 4 -c 1</span>   <span class="d"># IPIP 패킷 확인</span>
+
+<span class="c">$ cilium-dbg status | grep 'Cluster health'</span>
+<span class="hlbad">Cluster health:   <span class="bad">1/2 reachable</span></span>
+<span class="c">$ cilium-health status | grep -B1 unreachable</span></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== CASE 3 ===== -->
+<section class="slide" data-t="사례 3-1 Service">
+  <h2>사례 3-1. ClusterIP 접속 실패: 동작 원리와 원인</h2>
+  <p class="sub">증상: Pod IP로는 접속되는데 ClusterIP나 서비스 이름으로는 접속되지 않습니다. Service는 아래 순서로 만들어지고, 어느 단계가 비어 있는지에 따라 증상이 다릅니다.</p>
+  <div class="body" style="flex-direction:column;gap:14px;margin-top:14px">
+    <svg viewBox="0 0 1168 112" width="1168" role="img" aria-label="Service 변환이 만들어지는 순서와 단계별 실패 지점">
+      <g>
+        <rect class="box" x="0" y="4" width="232" height="60" rx="6"/>
+        <rect class="box" x="312" y="4" width="232" height="60" rx="6"/>
+        <rect class="box svc" x="624" y="4" width="232" height="60" rx="6"/>
+        <rect class="box" x="936" y="4" width="232" height="60" rx="6"/>
+      </g>
+      <g class="ah"><polygon points="302,28 312,34 302,40"/><polygon points="614,28 624,34 614,40"/><polygon points="926,28 936,34 926,40"/></g>
+      <line class="ln" x1="232" y1="34" x2="302" y2="34"/><line class="ln" x1="544" y1="34" x2="614" y2="34"/><line class="ln" x1="856" y1="34" x2="926" y2="34"/>
+      <g text-anchor="middle">
+        <text x="116" y="30" font-size="16" font-weight="700">Service와 Pod</text><text x="116" y="50" class="sm">selector, readiness</text>
+        <text x="428" y="30" font-size="16" font-weight="700">EndpointSlice</text><text x="428" y="50" class="sm">준비된 Pod IP 목록</text>
+        <text x="740" y="30" font-size="16" font-weight="700">노드의 변환 규칙</text><text x="740" y="50" class="sm">kube-proxy 또는 Cilium eBPF</text>
+        <text x="1052" y="30" font-size="16" font-weight="700">백엔드 Pod</text><text x="1052" y="50" class="sm">변환 후 Pod IP로 전달</text>
+        <text x="116" y="94" class="fl">selector 불일치, readiness 실패</text>
+        <text x="428" y="94" class="fl">주소 없음: 즉시 refused 가능</text>
+        <text x="740" y="94" class="fl">미동기화, kube-proxy 미기동</text>
+        <text x="1052" y="94" class="fl">노드 간 경로(사례 2), conntrack</text>
+      </g>
+    </svg>
+    <table class="tbl tight">
+      <thead><tr><th>증상 모양</th><th>의미</th><th>확인 방법</th></tr></thead>
+      <tbody>
+        <tr><td>즉시 Connection refused</td><td>iptables 모드에서 엔드포인트가 없는 Service에는 kube-proxy가 REJECT 규칙을 만듭니다.</td><td><code>get endpointslices</code></td></tr>
+        <tr><td>timeout</td><td>변환 규칙이 없거나, 규칙은 있지만 백엔드까지 도달하지 못합니다.</td><td>노드의 규칙 조회, 사례 2</td></tr>
+        <tr><td>특정 노드의 Pod에서만 실패</td><td>그 노드의 kube-proxy 또는 CNI 에이전트에 문제가 있습니다.</td><td>해당 노드의 kube-proxy 로그</td></tr>
+        <tr><td>자기 자신이 백엔드인 Pod에서만 실패</td><td>Pod가 자신이 속한 Service로 접근할 때 필요한 hairpin 처리 문제입니다.</td><td>브리지의 hairpin 설정</td></tr>
+        <tr><td>간헐적 실패, 연결 끊김</td><td>conntrack 테이블이 가득 찼거나 일부 백엔드만 비정상입니다.</td><td><code>dmesg</code> 의 conntrack 메시지, readiness</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="slide" data-t="사례 3-2 Service">
+  <h2>사례 3-2. ClusterIP 접속 실패: 확인과 조치</h2>
+  <p class="sub">Endpoints, 노드의 변환 규칙, 백엔드까지의 경로 순서로 확인합니다. kube-proxy를 의심하기 전에 Endpoints부터 봅니다.</p>
+  <div class="body" style="margin-top:14px">
+    <div class="col" style="flex:.85">
+      <div class="sec"><h3>확인 순서</h3>
+        <ul>
+          <li>EndpointSlice에 주소가 있는지 확인합니다.</li>
+          <li>비어 있으면 Service selector와 Pod 라벨, Pod의 READY 상태를 비교합니다.</li>
+          <li>주소가 있으면 노드에 변환 규칙이 있는지 확인합니다.</li>
+          <li>규칙도 있으면 백엔드 Pod에 직접 접속해 노드 간 경로를 확인합니다.</li>
+        </ul></div>
+      <div class="sec"><h3>CNI별 규칙 위치</h3>
+        <ul>
+          <li><span class="chip flannel">Flannel</span> <span class="chip calico">Calico</span> kube-proxy가 만든 iptables 또는 IPVS 규칙을 확인합니다.</li>
+          <li><span class="chip cilium">Cilium</span> kube-proxy 대체 모드이면 <code>cilium-dbg service list</code> 로 확인합니다.</li>
+        </ul></div>
+      <div class="sec"><h3>조치</h3>
+        <ul>
+          <li>selector나 라벨을 맞추고, readiness probe 실패 원인을 해결합니다.</li>
+          <li>kube-proxy Pod를 재시작하고, 모드와 필요한 커널 모듈을 확인합니다.</li>
+          <li>kube-proxy와 Cilium 대체 기능이 함께 켜져 있지 않은지 확인합니다.</li>
+        </ul></div>
+    </div>
+    <div class="col" style="flex:1.25;gap:12px">
+      <div class="term">
+        <div class="bar">Endpoints 확인</div>
+<pre><span class="c">$ kubectl -n shop get endpointslices -l kubernetes.io/service-name=web</span>
+NAME        ADDRESSTYPE  PORTS  ENDPOINTS
+<span class="hlbad">web-x7k2p   IPv4         8080   <span class="bad">&lt;unset&gt;</span></span>
+<span class="c">$ kubectl -n shop get svc web -o jsonpath='{.spec.selector}'</span>
+{"app":"web"}
+<span class="c">$ kubectl -n shop get pods --show-labels</span>
+<span class="hlbad">web-6d4cf   1/1   Running   app=web-v2</span>
+<span class="d"># 라벨이 달라 선택되지 않았습니다. 라벨이 맞는데 READY가 0/1이면
+# readiness 실패로 주소에서 제외된 것입니다.</span></pre>
+      </div>
+      <div class="term">
+        <div class="bar">노드의 변환 규칙 (node1)</div>
+<pre><span class="c">$ sudo iptables-save -t filter | grep 'has no endpoints'</span>
+-A KUBE-SERVICES -d 10.96.12.34/32 -p tcp --dport 80
+  -m comment --comment "shop/web:http has no endpoints"
+<span class="hlbad">  -j REJECT --reject-with icmp-port-unreachable</span>
+<span class="d"># 엔드포인트가 없어서 curl이 즉시 refused로 끝납니다.</span>
+<span class="c">$ curl -s localhost:10249/proxyMode</span>
+iptables
+<span class="c">$ sudo ipvsadm -Ln | grep -A2 10.96.12.34</span>    <span class="d"># IPVS 모드일 때</span>
+<span class="c">$ cilium-dbg service list | grep 10.96.12.34</span>  <span class="d"># Cilium일 때</span></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== CASE 4 ===== -->
+<section class="slide" data-t="사례 4-1 DNS">
+  <h2>사례 4-1. 이름 조회 실패: 질의 경로와 원인</h2>
+  <p class="sub">증상: 서비스 이름으로 접속하면 실패하고 IP로 접속하면 정상입니다. 질의가 지나는 구간마다 실패 원인이 다릅니다.</p>
+  <div class="body" style="flex-direction:column;gap:14px;margin-top:14px">
+    <svg viewBox="0 0 1168 112" width="1168" role="img" aria-label="DNS 질의 경로와 단계별 실패 지점">
+      <g>
+        <rect class="box" x="0" y="4" width="232" height="60" rx="6"/>
+        <rect class="box svc" x="312" y="4" width="232" height="60" rx="6"/>
+        <rect class="box dns" x="624" y="4" width="232" height="60" rx="6"/>
+        <rect class="box" x="936" y="4" width="232" height="60" rx="6"/>
+      </g>
+      <g class="ah"><polygon points="302,28 312,34 302,40"/><polygon points="614,28 624,34 614,40"/><polygon points="926,28 936,34 926,40"/></g>
+      <line class="ln" x1="232" y1="34" x2="302" y2="34"/><line class="ln" x1="544" y1="34" x2="614" y2="34"/><line class="ln" x1="856" y1="34" x2="926" y2="34"/>
+      <g text-anchor="middle">
+        <text x="116" y="30" font-size="16" font-weight="700">Pod의 resolv.conf</text><text x="116" y="50" class="sm">nameserver, search, ndots</text>
+        <text x="428" y="30" font-size="16" font-weight="700">kube-dns Service</text><text x="428" y="50" class="sm">10.96.0.10 → CoreDNS Pod</text>
+        <text x="740" y="30" font-size="16" font-weight="700">CoreDNS Pod</text><text x="740" y="50" class="sm">Corefile 플러그인 처리</text>
+        <text x="1052" y="30" font-size="16" font-weight="700">상위 DNS</text><text x="1052" y="50" class="sm">외부 도메인은 노드 설정으로 전달</text>
+        <text x="116" y="94" class="fl">dnsPolicy, ndots, search 설정</text>
+        <text x="428" y="94" class="fl">Endpoints 없음, 변환 규칙 문제</text>
+        <text x="740" y="94" class="fl">Pod 중단, 루프, 53 포트 정책</text>
+        <text x="1052" y="94" class="fl">상위 DNS 도달 불가</text>
+      </g>
+    </svg>
+    <table class="tbl tight">
+      <thead><tr><th>증상</th><th>원인</th><th>확인 방법</th></tr></thead>
+      <tbody>
+        <tr><td>내부 이름만 NXDOMAIN</td><td>이름이나 네임스페이스가 틀렸거나 Service가 없습니다.</td><td><code>nslookup &lt;svc&gt;.&lt;ns&gt;.svc.cluster.local</code></td></tr>
+        <tr><td>내부와 외부 모두 timeout</td><td>CoreDNS까지 질의가 도달하지 못합니다.</td><td>Service IP와 Pod IP로 각각 질의</td></tr>
+        <tr><td>외부 도메인만 실패</td><td>상위 DNS 도달 불가 또는 forward 설정 문제입니다.</td><td>CoreDNS 로그, Corefile</td></tr>
+        <tr><td>간헐적으로 5초 지연</td><td>UDP conntrack 경합 또는 일부 CoreDNS Pod 불량입니다.</td><td>반복 질의 시간 측정, NodeLocal DNSCache 검토</td></tr>
+        <tr><td>외부 도메인이 느림</td><td><code>ndots:5</code> 때문에 search 도메인을 먼저 모두 질의합니다.</td><td>도메인 끝에 점을 붙여 비교</td></tr>
+        <tr><td>hostNetwork Pod에서만 내부 이름 실패</td><td>dnsPolicy가 ClusterFirstWithHostNet이 아닙니다.</td><td>Pod 스펙의 <code>dnsPolicy</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="slide" data-t="사례 4-2 DNS">
+  <h2>사례 4-2. 이름 조회 실패: 확인과 조치</h2>
+  <p class="sub">Service IP와 CoreDNS Pod IP로 각각 질의해서 어느 구간에서 끊기는지 확인합니다. 아래 예시는 CoreDNS 루프로 Service가 비어 있는 경우입니다.</p>
+  <div class="body" style="margin-top:14px">
+    <div class="col" style="flex:.9">
+      <div class="sec"><h3>확인 순서</h3>
+        <ul>
+          <li>Pod 안의 <code>/etc/resolv.conf</code> 를 확인합니다.</li>
+          <li>Service IP와 CoreDNS Pod IP로 각각 질의합니다.</li>
+          <li>Pod IP로는 되고 Service IP로는 안 되면 kube-dns의 Endpoints와 변환 규칙을 확인합니다. (사례 3)</li>
+          <li>Pod IP로도 안 되면 CoreDNS 상태와 로그, 정책을 확인합니다.</li>
+        </ul></div>
+      <div class="term">
+        <div class="bar">egress 정책에 DNS를 허용하는 예</div>
+<pre>egress:
+- to:
+  - namespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: kube-system
+    podSelector:
+      matchLabels: {k8s-app: kube-dns}
+  ports:
+  - {protocol: UDP, port: 53}
+  - {protocol: TCP, port: 53}</pre>
+      </div>
+    </div>
+    <div class="col" style="flex:1.3;gap:12px">
+      <div class="term">
+        <div class="bar">Service IP와 Pod IP로 각각 질의</div>
+<pre><span class="c">$ nslookup web.shop.svc.cluster.local 10.96.0.10</span>
+<span class="bad">;; connection timed out; no servers could be reached</span>
+<span class="c">$ nslookup web.shop.svc.cluster.local 10.244.2.3</span>
+<span class="ok">Address: 10.96.12.34</span>   <span class="d"># 해당 Pod는 응답합니다.</span>
+<span class="c">$ kubectl -n kube-system get endpointslices -l k8s-app=kube-dns</span>
+<span class="hlbad">kube-dns-4mq8z  IPv4  53,53,9153  <span class="bad">&lt;unset&gt;</span></span>
+<span class="d"># Service에 준비된 Pod가 없습니다. CoreDNS Pod 상태를 확인합니다.</span></pre>
+      </div>
+      <div class="term">
+        <div class="bar">CoreDNS 상태와 원인 확인</div>
+<pre><span class="c">$ kubectl -n kube-system get pods -l k8s-app=kube-dns -o wide</span>
+<span class="hlbad">coredns-5d78c9869d-x2k8p  <span class="bad">0/1  CrashLoopBackOff</span>  7  node2</span>
+<span class="c">$ kubectl -n kube-system logs coredns-5d78c9869d-x2k8p --tail=2</span>
+<span class="bad">[FATAL] plugin/loop: Loop (127.0.0.1:41529 -&gt; :53) detected</span>
+<span class="w">node2$</span> <span class="c">cat /etc/resolv.conf</span>
+nameserver 127.0.0.53
+<span class="d"># 노드의 resolv.conf가 로컬 스텁을 가리켜 CoreDNS가 자기 자신에게
+# 질의합니다. kubelet의 resolvConf를 실제 상위 DNS 파일로 지정합니다.</span></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== CASE 5 ===== -->
+<section class="slide" data-t="사례 5-1 NetworkPolicy">
+  <h2>사례 5-1. 정책 차단: 동작 규칙과 흔한 실수</h2>
+  <p class="sub">증상: 같은 Service인데 특정 Pod에서만 timeout이 발생합니다. 최근에 NetworkPolicy를 추가했거나 라벨을 변경했습니다.</p>
+  <div class="body" style="margin-top:14px">
+    <div class="col" style="flex:.95">
+      <div class="sec"><h3>정책이 동작하는 규칙</h3>
+        <ul>
+          <li>Pod를 선택하는 정책이 하나라도 있으면, 그 방향(Ingress 또는 Egress)은 허용 목록에 있는 트래픽만 통과합니다.</li>
+          <li>정책은 허용만 더하며, 여러 정책은 합쳐서 적용됩니다.</li>
+          <li>클라이언트의 egress와 서버의 ingress에 정책이 모두 있으면 양쪽에서 허용해야 합니다.</li>
+          <li>Service로 접근해도 정책은 변환된 Pod IP를 기준으로 적용됩니다.</li>
+          <li>DNS(53)도 egress 정책의 대상입니다.</li>
+        </ul></div>
+      <div class="callout warn" style="font-size:16px"><b>timeout과 refused</b><br>대부분의 정책 엔진은 차단한 패킷을 버리므로 timeout으로 보입니다. 다만 방화벽의 REJECT 규칙은 refused로 보일 수 있습니다. 목적지에서 SYN이 도착하는지 캡처로 확인해야 정확히 구분됩니다.</div>
+    </div>
+    <div class="col" style="flex:1.1">
+      <div class="term">
+        <div class="bar">흔한 실수: selector를 한 항목에 쓸지, 두 항목으로 나눌지</div>
+<pre><span class="d"># 의도: shop 네임스페이스의 app=web Pod만 db 접근 허용</span>
+
+<span class="bad"># 잘못된 작성: 항목이 둘이므로 OR로 동작합니다.</span>
+ingress:
+- from:
+  - namespaceSelector:
+      matchLabels: {kubernetes.io/metadata.name: shop}
+  - podSelector:
+      matchLabels: {app: web}
+<span class="d"># shop의 모든 Pod, 그리고 정책과 같은 네임스페이스의 app=web Pod가
+# 모두 허용됩니다.</span>
+
+<span class="ok"># 올바른 작성: 한 항목 안에 두 selector를 쓰면 AND입니다.</span>
+ingress:
+- from:
+  - namespaceSelector:
+      matchLabels: {kubernetes.io/metadata.name: shop}
+    podSelector:
+      matchLabels: {app: web}</pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="slide" data-t="사례 5-2 NetworkPolicy">
+  <h2>사례 5-2. 정책 차단: CNI별 확인과 조치</h2>
+  <p class="sub">정책을 확인하는 방법과 드롭 사유를 보는 방법이 CNI마다 다릅니다.</p>
+  <div class="body" style="margin-top:14px">
+    <div class="col" style="flex:.9">
+      <table class="tbl tight">
+        <thead><tr><th>CNI</th><th>정책 확인 방법</th></tr></thead>
+        <tbody>
+          <tr><td><span class="chip flannel">Flannel</span></td><td><span class="fail">정책을 적용하지 않습니다.</span> 정책이 있어도 차단되지 않으므로, 통신이 막힌다면 다른 원인입니다. 정책이 필요하면 Calico 또는 Cilium을 사용합니다.</td></tr>
+          <tr><td><span class="chip calico">Calico</span></td><td>Kubernetes 정책은 <code>knp.&lt;ns&gt;.</code> 이름으로 보입니다. 정책에 Log 규칙을 넣고 커널 로그의 <code>calico-packet</code> 를 확인합니다.</td></tr>
+          <tr><td><span class="chip cilium">Cilium</span></td><td>endpoint의 정책 적용 여부를 보고, Hubble 또는 monitor로 드롭 사유를 확인합니다. 감사 모드로 먼저 영향을 확인할 수 있습니다.</td></tr>
+        </tbody>
+      </table>
+      <div class="sec"><h3>조치</h3>
+        <ul>
+          <li>차단된 출발지의 라벨과 네임스페이스를 확인해 허용 규칙에 추가합니다.</li>
+          <li>selector 작성 방식(AND와 OR)을 점검합니다.</li>
+          <li>egress 정책에는 DNS 허용을 함께 넣습니다.</li>
+          <li>운영에 적용하기 전에 로그나 Hubble로 영향 범위를 확인합니다.</li>
+        </ul></div>
+    </div>
+    <div class="col" style="flex:1.2;gap:12px">
+      <div class="term">
+        <div class="bar">Calico: 정책 확인과 로그</div>
+<pre><span class="c">$ calicoctl get networkpolicy -n shop -o wide</span>
+NAME                      ORDER  SELECTOR
+knp.default.allow-web-db  &lt;nil&gt;  app == 'db'
+<span class="d"># 의심되는 정책 끝에 Log 규칙을 추가합니다.</span>
+- action: Log
+- action: Deny
+<span class="w">node2$</span> <span class="c">journalctl -k | grep calico-packet</span>
+<span class="hlbad">calico-packet: IN=cali1a2b SRC=10.244.1.9 DST=10.244.2.8 DPT=5432</span></pre>
+      </div>
+      <div class="term">
+        <div class="bar">Cilium: 적용 여부와 드롭 사유</div>
+<pre><span class="c">$ cilium-dbg endpoint list</span>
+ENDPOINT  POLICY (ingress)  POLICY (egress)  IDENTITY  LABELS
+3012      Enabled           Disabled         1733      k8s:app=db
+<span class="c">$ hubble observe -n shop --to-pod shop/db-0 --verdict DROPPED</span>
+<span class="hlbad">shop/web-7d9c:48120 (ID:4821) &lt;&gt; shop/db-0:5432 (ID:1733)
+  <span class="bad">Policy denied DROPPED</span> (TCP Flags: SYN)</span>
+<span class="d"># 출발 identity 4821이 db의 허용 목록에 없습니다.</span></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== CASE 6 ===== -->
+<section class="slide" data-t="사례 6-1 외부 통신">
+  <h2>사례 6-1. 외부 통신 실패: 출발지 주소 변화와 원인</h2>
+  <p class="sub">증상: Pod에서 클러스터 밖으로 접속하면 응답이 없습니다. 패킷의 출발지 주소가 지점마다 어떻게 바뀌는지 알아야 원인을 찾을 수 있습니다.</p>
+  <div class="body" style="flex-direction:column;gap:14px;margin-top:14px">
+    <svg viewBox="0 0 1168 132" width="1168" role="img" aria-label="외부 통신에서 출발지 주소가 바뀌는 지점">
+      <g>
+        <rect class="box" x="0" y="4" width="232" height="60" rx="6"/>
+        <rect class="box cni" x="312" y="4" width="232" height="60" rx="6"/>
+        <rect class="box" x="624" y="4" width="232" height="60" rx="6"/>
+        <rect class="box" x="936" y="4" width="232" height="60" rx="6"/>
+      </g>
+      <g class="ah"><polygon points="302,28 312,34 302,40"/><polygon points="614,28 624,34 614,40"/><polygon points="926,28 936,34 926,40"/></g>
+      <line class="ln" x1="232" y1="34" x2="302" y2="34"/><line class="ln" x1="544" y1="34" x2="614" y2="34"/><line class="ln" x1="856" y1="34" x2="926" y2="34"/>
+      <g text-anchor="middle">
+        <text x="116" y="30" font-size="16" font-weight="700">Pod</text><text x="116" y="50" class="sm">10.244.1.9</text>
+        <text x="428" y="30" font-size="16" font-weight="700">node1 (SNAT 지점)</text><text x="428" y="50" class="sm">eth0 192.168.10.11</text>
+        <text x="740" y="30" font-size="16" font-weight="700">클라우드 NAT, 방화벽</text><text x="740" y="50" class="sm">공인 주소 203.0.113.10</text>
+        <text x="1052" y="30" font-size="16" font-weight="700">외부 서버</text><text x="1052" y="50" class="sm">1.1.1.1</text>
+        <text x="116" y="92" font-size="14">출발지 10.244.1.9</text>
+        <text x="428" y="92" font-size="14">SNAT 후 출발지 192.168.10.11</text>
+        <text x="740" y="92" font-size="14">NAT 후 출발지 203.0.113.10</text>
+        <text x="1052" y="92" font-size="14">203.0.113.10으로 응답</text>
+        <text x="428" y="116" class="fl">SNAT이 없으면 Pod IP가 그대로 나갑니다.</text>
+      </g>
+    </svg>
+    <table class="tbl tight">
+      <thead><tr><th>원인 후보</th><th>나타나는 증거</th><th>확인 방법</th></tr></thead>
+      <tbody>
+        <tr><td>SNAT 규칙 없음</td><td>노드 eth0 캡처에서 출발지가 Pod IP입니다.</td><td>노드의 iptables nat, CNI 설정</td></tr>
+        <tr><td>ip_forward 또는 rp_filter</td><td>노드가 Pod의 패킷을 전달하지 않습니다.</td><td><code>sysctl</code> 값 확인</td></tr>
+        <tr><td>노드의 기본 라우트</td><td>노드 자신도 외부에 접속하지 못합니다.</td><td><code>ip route get 1.1.1.1</code></td></tr>
+        <tr><td>클라우드 NAT, 라우트, 보안 그룹</td><td>SNAT은 됐는데 응답이 없습니다.</td><td>노드에서 직접 curl과 비교</td></tr>
+        <tr><td>외부 방화벽 허용 목록</td><td>일부 노드에서만 성공합니다.</td><td>노드별 출구 공인 IP 확인</td></tr>
+        <tr><td>MTU, PMTUD</td><td>작은 요청은 되고 큰 응답에서 멈춥니다.</td><td><code>ping -M do -s</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="slide" data-t="사례 6-2 외부 통신">
+  <h2>사례 6-2. 외부 통신 실패: 확인과 조치</h2>
+  <p class="sub">노드 자체의 외부 통신부터 확인한 뒤, 패킷의 출발지 주소와 SNAT 규칙을 확인합니다.</p>
+  <div class="body" style="margin-top:14px">
+    <div class="col" style="flex:.85">
+      <div class="sec"><h3>확인 순서</h3>
+        <ul>
+          <li>노드에서 직접 외부에 접속해 노드 자체가 정상인지 확인합니다.</li>
+          <li>Pod에서 외부 IP로 접속해 DNS와 구분합니다.</li>
+          <li>노드 eth0에서 캡처해 출발지 주소를 확인합니다.</li>
+          <li>SNAT 규칙과 <code>ip_forward</code> 를 확인합니다.</li>
+          <li>SNAT이 되는데도 실패하면 클라우드 설정을 확인합니다.</li>
+        </ul></div>
+      <div class="sec"><h3>CNI별 SNAT 설정</h3>
+        <ul>
+          <li><span class="chip flannel">Flannel</span> <code>--ip-masq</code> 옵션</li>
+          <li><span class="chip calico">Calico</span> IPPool의 <code>natOutgoing: true</code></li>
+          <li><span class="chip cilium">Cilium</span> <code>enable-ipv4-masquerade</code> 설정</li>
+        </ul></div>
+      <div class="callout" style="font-size:16px">외부 방화벽이 출구 IP를 허용 목록으로 관리한다면, 노드 IP가 아니라 고정된 출구 IP가 필요합니다. 이때는 Egress Gateway 기능을 검토합니다.</div>
+    </div>
+    <div class="col" style="flex:1.25;gap:12px">
+      <div class="term">
+        <div class="bar">노드와 Pod에서 확인</div>
+<pre><span class="w">node1$</span> <span class="c">curl -m3 -sS -o /dev/null https://1.1.1.1 &amp;&amp; echo ok</span>
+ok                         <span class="d"># 노드 자체는 정상입니다.</span>
+<span class="c">$ kubectl exec netshoot -- curl -m3 -sS https://1.1.1.1</span>
+<span class="bad">curl: (28) Connection timed out</span>
+<span class="w">node1$</span> <span class="c">sudo tcpdump -ni eth0 host 1.1.1.1 -c 2</span>
+<span class="hlbad">IP <span class="bad">10.244.1.9</span>.51234 &gt; 1.1.1.1.443: Flags [S]</span>
+<span class="d"># 출발지가 Pod IP입니다. SNAT이 적용되지 않았습니다.</span>
+<span class="w">node1$</span> <span class="c">sysctl net.ipv4.ip_forward</span>
+net.ipv4.ip_forward = 1</pre>
+      </div>
+      <div class="term">
+        <div class="bar">CNI별 SNAT 규칙 (masquerade가 꺼진 경우)</div>
+<pre><span class="c">$ sudo iptables -t nat -S FLANNEL-POSTRTG</span>
+<span class="bad">iptables: No chain/target/match by that name.</span>   <span class="d"># Flannel</span>
+<span class="c">$ sudo iptables -t nat -S cali-nat-outgoing</span>
+<span class="bad">-N cali-nat-outgoing</span>             <span class="d"># Calico: MASQUERADE 규칙 없음</span>
+<span class="c">$ calicoctl get ippool -o yaml | grep natOutgoing</span>
+  natOutgoing: <span class="bad">false</span>
+<span class="c">$ cilium-dbg status | grep Masquerading</span>
+<span class="bad">Masquerading:   Disabled</span>        <span class="d"># Cilium</span></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 20. Cheat sheet -->
+<section class="slide" data-t="증상별 요약">
+  <h2>증상별 원인 컴포넌트 요약</h2>
+  <p class="sub">장애 대응 중에 바로 참고할 수 있도록 정리한 표입니다.</p>
+  <div class="body" style="margin-top:14px">
+    <table class="tbl tight">
+      <thead><tr><th>증상</th><th>먼저 의심할 컴포넌트</th><th>첫 확인 방법</th></tr></thead>
+      <tbody>
+        <tr><td>ContainerCreating, FailedCreatePodSandBox</td><td>CNI 설정, IPAM 고갈</td><td><code>describe pod</code> 이벤트, IP 풀 사용률</td></tr>
+        <tr><td>같은 노드는 되고 다른 노드만 불통</td><td>터널, BGP, 방화벽</td><td>양쪽 노드의 <code>tcpdump</code>, <code>ip route</code></td></tr>
+        <tr><td>ping은 되는데 큰 응답에서 멈춤</td><td>MTU 불일치</td><td><code>ping -M do -s</code></td></tr>
+        <tr><td>ClusterIP만 timeout (Pod IP는 정상)</td><td>EndpointSlice, kube-proxy, eBPF</td><td><code>get endpointslices</code>, 변환 규칙 조회</td></tr>
+        <tr><td>이름만 실패 (IP는 정상)</td><td>CoreDNS, 53 포트 정책, ndots</td><td><code>nslookup &lt;이름&gt; &lt;CoreDNS Pod IP&gt;</code></td></tr>
+        <tr><td>특정 Pod 사이만 timeout</td><td>NetworkPolicy</td><td>Hubble, Calico 정책 (Flannel은 정책 없음)</td></tr>
+        <tr><td>외부 IP도 timeout</td><td>masquerade, 클라우드 NAT</td><td>노드 <code>eth0</code> 캡처의 출발지 IP</td></tr>
+        <tr><td>Connection refused</td><td>애플리케이션, 또는 중간의 REJECT 규칙(방화벽, 엔드포인트 없는 Service)</td><td>목적지 캡처, <code>ss -ltnp</code>, <code>get endpointslices</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- 21. Wrap-up -->
+<section class="slide" data-t="마무리">
+  <h2>운영에서 기억할 내용</h2>
+  <p class="sub">실패한 통신 단계를 먼저 확인하고, 그 단계의 담당 컴포넌트를 CNI별 명령으로 확인합니다.</p>
+  <div class="body" style="margin-top:18px;flex-direction:column;gap:20px">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:30px">
+      <div class="sec"><h3>영향 범위</h3><p>전체 클러스터, 특정 노드, 특정 Pod, 특정 목적지 중 어디인지 먼저 확인합니다. 범위에 따라 확인할 컴포넌트가 달라집니다.</p></div>
+      <div class="sec"><h3>통신 단계</h3><p>Pod 네트워크 생성부터 DNS 이름 조회까지 순서대로 확인하고, 처음 실패한 단계의 담당 컴포넌트를 확인합니다.</p></div>
+      <div class="sec"><h3>패킷 확인</h3><p>로그만으로 판단하기 어려우면 양쪽 노드에서 패킷을 캡처해서 어디서 사라지는지 확인합니다.</p></div>
+    </div>
+    <div class="callout" style="font-size:18px">
+      <b>장애를 사전에 줄이는 방법</b>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 36px;margin-top:8px;font-size:17px;line-height:1.6">
+        <span>IP 풀과 노드별 블록 사용률이 80%에 도달하면 알림을 보냅니다.</span>
+        <span>노드 NIC와 Pod의 MTU 기준을 문서로 정리합니다.</span>
+        <span>CNI가 사용하는 포트와 프로토콜을 방화벽 정책에 명시합니다.</span>
+        <span>CoreDNS의 지연과 오류율을 모니터링하고, 필요하면 NodeLocal DNSCache를 사용합니다.</span>
+        <span>CNI 업그레이드는 노드 단위로 순차 적용하고, 단계별 확인으로 검증합니다.</span>
+        <span>NetworkPolicy를 변경할 때는 드롭 로그나 Hubble로 영향을 미리 확인합니다.</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+</div>
+</div>
+
+<div id="controls">
+  <button id="prev" aria-label="이전 슬라이드">이전</button>
+  <button id="next" aria-label="다음 슬라이드">다음</button>
+  <div id="bar"><i></i></div>
+  <div id="count">1 / 1</div>
+</div>
+
+<script>
+(function(){
+  var stage=document.getElementById('stage'), vp=document.getElementById('viewport');
+  var slides=[].slice.call(document.querySelectorAll('.slide'));
+  var bar=document.querySelector('#bar i'), count=document.getElementById('count');
+  var cur=0;
+
+  slides.forEach(function(s,i){
+    if(i===0) return;
+    var f=document.createElement('div');
+    f.className='foot';
+    f.innerHTML='<span>Week 8. Kubernetes Networking 장애 분석과 운영</span><span>'+(s.getAttribute('data-t')||'')+'</span>';
+    s.appendChild(f);
+  });
+
+  function fit(){
+    var w=vp.clientWidth, h=vp.clientHeight;
+    var k=Math.min(w/1280,h/720);
+    stage.style.transform='scale('+k+')';
+    stage.style.left=((w-1280*k)/2)+'px';
+    stage.style.top=((h-720*k)/2)+'px';
+  }
+  function go(n){
+    cur=Math.max(0,Math.min(slides.length-1,n));
+    slides.forEach(function(s,i){s.classList.toggle('active',i===cur)});
+    bar.style.width=((cur+1)/slides.length*100)+'%';
+    count.textContent=(cur+1)+' / '+slides.length;
+  }
+  document.getElementById('prev').onclick=function(){go(cur-1)};
+  document.getElementById('next').onclick=function(){go(cur+1)};
+  document.addEventListener('keydown',function(e){
+    if(e.key==='ArrowRight'||e.key==='PageDown'||e.key===' '){e.preventDefault();go(cur+1)}
+    else if(e.key==='ArrowLeft'||e.key==='PageUp'){e.preventDefault();go(cur-1)}
+    else if(e.key==='Home'){go(0)}
+    else if(e.key==='End'){go(slides.length-1)}
+  });
+  var tx=null;
+  document.addEventListener('touchstart',function(e){tx=e.touches[0].clientX},{passive:true});
+  document.addEventListener('touchend',function(e){
+    if(tx===null) return;
+    var dx=e.changedTouches[0].clientX-tx; tx=null;
+    if(Math.abs(dx)>60) go(cur+(dx<0?1:-1));
+  },{passive:true});
+  window.addEventListener('resize',fit);
+
+  var V={
+    1:{t:'확인 1에서 실패: Pod 네트워크 생성 단계의 문제입니다',w:'원인 후보: kubelet, CNI 플러그인, IPAM',l:['<code>kubectl describe pod</code> 이벤트에서 FailedCreatePodSandBox 메시지를 확인합니다.','<code>/etc/cni/net.d</code> 설정 파일과 CNI 바이너리가 있는지 확인합니다.','CNI 에이전트 로그와 IP 풀 사용률을 확인합니다. (사례 1)']},
+    2:{t:'확인 2에서 실패: 같은 노드의 Pod 간 통신 문제입니다',w:'원인 후보: 노드 내 포워딩, NetworkPolicy',l:['veth, 브리지, Pod IP 라우트가 있는지 확인합니다.','정책으로 차단되는지 Hubble 또는 Calico 정책과 로그로 확인합니다. (사례 5)','Flannel이라면 정책이 아니라 포워딩 문제로 판단합니다.']},
+    3:{t:'확인 3에서 실패: 다른 노드의 Pod 간 통신 문제입니다',w:'원인 후보: CNI 노드 에이전트, 노드 네트워크',l:['노드 간 라우트나 터널 장치가 있는지 확인합니다. (<code>ip route</code>, <code>bridge fdb</code>, BGP 상태)','양쪽 노드에서 <code>tcpdump</code> 를 실행해 패킷이 어디서 사라지는지 확인합니다.','MTU와 방화벽 포트(8472, 179, IPIP)를 확인합니다. (사례 2)']},
+    4:{t:'확인 4에서 실패: Service 통신 문제입니다',w:'원인 후보: EndpointSlice, kube-proxy 또는 eBPF',l:['<code>get endpointslices</code> 가 비어 있는지 확인합니다. (selector, readiness)','노드의 iptables 또는 IPVS 규칙, 또는 <code>cilium-dbg service list</code> 를 확인합니다.','kube-proxy와 Cilium의 kube-proxy 대체 기능이 중복되지 않았는지 확인합니다. (사례 3)']},
+    5:{t:'확인 5에서 실패: DNS 이름 조회 문제입니다',w:'원인 후보: CoreDNS, resolv.conf, 53 포트 정책',l:['오류가 timeout인지 NXDOMAIN인지 구분합니다.','CoreDNS Pod IP로 직접 질의해서 Service 변환 문제와 구분합니다.','egress 정책에서 DNS가 허용되어 있는지 확인합니다. (사례 4)']},
+    0:{t:'전부 성공: 네트워크 이외의 문제입니다',w:'원인 후보: 애플리케이션, 프로토콜, 포트, readiness',l:['<code>targetPort</code> 와 컨테이너가 듣고 있는 포트가 같은지 확인합니다.','<code>ss -ltnp</code>, 애플리케이션 로그, TLS 인증서, Host 헤더를 확인합니다.','큰 응답에서만 멈춘다면 MTU를 확인합니다. (사례 2)']}
+  };
+  var verdict=document.getElementById('verdict');
+  function hint(){
+    verdict.innerHTML='<h3>어느 항목에서 처음 실패했습니까?</h3><p class="hint">왼쪽 항목을 1번부터 순서대로 실행합니다. 처음 실패한 항목을 선택하면, 그 항목에서 새로 추가된 컴포넌트가 원인 후보로 표시됩니다.<br><br>앞 항목이 성공했다면 그 단계는 정상이므로 다시 확인하지 않아도 됩니다.</p>';
+  }
+  function show(k){
+    var d=V[k];
+    verdict.innerHTML='<h3>'+d.t+'</h3><p class="who"><b>'+d.w+'</b></p><ul>'+d.l.map(function(x){return '<li>'+x+'</li>'}).join('')+'</ul>';
+    [].forEach.call(document.querySelectorAll('.step,.pick'),function(b){
+      var n=+b.getAttribute('data-k');
+      b.classList.remove('sel','passed');
+      if(k>0){ if(n===k) b.classList.add('sel'); else if(n>0 && n<k) b.classList.add('passed'); }
+      else { if(n===0) b.classList.add('sel'); else b.classList.add('passed'); }
+    });
+  }
+  [].forEach.call(document.querySelectorAll('.step,.pick'),function(b){
+    b.addEventListener('click',function(){show(+b.getAttribute('data-k'))});
+  });
+  hint();
+
+  var h=parseInt((location.hash||'').slice(1),10);
+  fit();
+  go(isNaN(h)?0:h-1);
+  setTimeout(fit,50);
+})();
+</script>
+</body>
+</html>
