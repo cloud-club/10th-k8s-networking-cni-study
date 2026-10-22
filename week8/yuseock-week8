@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reddit Pi-Day 장애 분석 | Kubernetes & Calico</title>
+<style>
+:root {
+  --bg: #10151e;
+  --surface: #17202c;
+  --text: #f2f5fa;
+  --muted: #a8b5c7;
+  --accent: #ff7854;
+  --blue: #84baff;
+  --line: #334052;
+  --green: #8be0bb;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Pretendard", "Noto Sans KR", "Apple SD Gothic Neo",
+    "Malgun Gothic", sans-serif;
+  word-break: keep-all;
+  line-height: 1.55;
+}
+button, a { -webkit-tap-highlight-color: transparent; }
+button { font: inherit; }
+a { color: var(--blue); text-underline-offset: 5px; }
+button:focus-visible, a:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 5px;
+}
+.slide {
+  display: none;
+  min-height: calc(100svh - 78px);
+  max-width: 1440px;
+  margin: auto;
+  padding: clamp(32px, 5vw, 76px);
+}
+.slide.active {
+  display: flex;
+  flex-direction: column;
+}
+.eyebrow {
+  color: var(--accent);
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: .13em;
+  margin: 0 0 20px;
+}
+h1, h2, h3, p { margin-top: 0; }
+h1 {
+  font-size: clamp(42px, 5.8vw, 80px);
+  line-height: 1.22;
+  letter-spacing: -.045em;
+  margin-bottom: 30px;
+}
+h2 {
+  font-size: clamp(32px, 3.7vw, 52px);
+  line-height: 1.3;
+  letter-spacing: -.035em;
+  margin-bottom: 36px;
+}
+h3 {
+  font-size: clamp(22px, 2vw, 29px);
+  margin-bottom: 14px;
+}
+p, li, td, th {
+  font-size: clamp(18px, 1.8vw, 25px);
+}
+.lead {
+  color: var(--muted);
+  font-size: clamp(22px, 2.25vw, 32px);
+  max-width: 960px;
+}
+.accent { color: var(--accent); }
+.blue { color: var(--blue); }
+.muted { color: var(--muted); }
+.big {
+  font-size: clamp(70px, 10vw, 140px);
+  font-weight: 850;
+  line-height: 1.1;
+  letter-spacing: -.06em;
+  color: var(--accent);
+}
+.big small {
+  font-size: 28px;
+  letter-spacing: 0;
+  margin-left: 12px;
+}
+.cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(28px, 5vw, 72px);
+  align-items: start;
+}
+.rule {
+  border-top: 2px solid var(--line);
+  padding-top: 24px;
+}
+.content { flex: 1; }
+.centered {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  flex: 1;
+}
+.statement {
+  margin: 30px 0;
+  border-left: 4px solid var(--accent);
+  padding: 12px 0 12px 24px;
+  font-size: clamp(23px, 2.4vw, 34px);
+  font-weight: 700;
+}
+ul { padding-left: 1.2em; margin: 0; }
+li { margin: 14px 0; }
+code {
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: .88em;
+  overflow-wrap: anywhere;
+}
+pre {
+  background: #0c1119;
+  border-left: 3px solid var(--blue);
+  padding: 24px 28px;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 20px 0;
+  line-height: 1.75;
+  font-size: clamp(15px, 1.55vw, 22px);
+}
+pre code { font-size: inherit; }
+.caption {
+  color: var(--muted);
+  font-size: 16px;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 18px 0;
+}
+td, th {
+  text-align: left;
+  padding: 18px 12px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+th {
+  font-size: 17px;
+  color: var(--muted);
+  font-weight: 500;
+}
+.flow {
+  list-style: none;
+  counter-reset: flow;
+  padding: 0;
+}
+.flow li {
+  counter-increment: flow;
+  display: flex;
+  gap: 22px;
+  padding: 17px 0;
+  border-bottom: 1px solid var(--line);
+  margin: 0;
+  align-items: baseline;
+}
+.flow li::before {
+  content: counter(flow, decimal-leading-zero);
+  color: var(--accent);
+  font-size: 18px;
+  font-weight: 800;
+}
+.source {
+  margin-top: 30px;
+  padding-top: 14px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.source a { color: var(--muted); }
+.notes {
+  display: none;
+  margin-top: 24px;
+  padding: 20px 24px;
+  border: 1px dashed var(--line);
+  color: var(--muted);
+  font-size: 17px;
+}
+body.show-notes .active .notes { display: block; }
+.notes::before {
+  content: "발표 메모";
+  display: block;
+  color: var(--green);
+  font-size: 13px;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+.toolbar {
+  position: sticky;
+  bottom: 0;
+  background: rgba(16, 21, 30, .97);
+  border-top: 1px solid var(--line);
+  padding: 13px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  z-index: 10;
+}
+.controls { display: flex; gap: 8px; }
+button {
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text);
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+}
+button:hover { background: var(--surface); }
+button:disabled { opacity: .3; cursor: default; }
+.counter { font-size: 14px; color: var(--muted); }
+.progress {
+  height: 3px;
+  position: absolute;
+  top: -1px;
+  left: 0;
+  width: 0;
+  background: var(--accent);
+  transition: width .2s ease;
+}
+.refs { padding-left: 1.2em; }
+.refs li { font-size: 21px; margin: 22px 0; }
+.refs small {
+  display: block;
+  color: var(--muted);
+  font-size: 16px;
+  margin-top: 6px;
+}
+@media (max-width: 760px) {
+  .cols { grid-template-columns: 1fr; }
+  .slide { padding: 30px 22px; }
+  .toolbar { padding: 12px; }
+  .optional { display: none; }
+  td, th { padding: 12px 7px; font-size: 17px; }
+  pre { padding: 18px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}
+@page { size: A4 landscape; margin: 12mm; }
+@media print {
+  :root {
+    --bg: #fff; --surface: #f4f6f8; --text: #142031;
+    --muted: #536174; --accent: #c33e20;
+    --blue: #225b9f; --line: #cbd3dc;
+  }
+  body { background: #fff; }
+  .slide, .slide.active {
+    display: flex;
+    flex-direction: column;
+    min-height: 175mm;
+    max-width: none;
+    padding: 6mm;
+    break-after: page;
+    page-break-after: always;
+  }
+  .slide:last-of-type { break-after: auto; page-break-after: auto; }
+  h1 { font-size: 42pt; }
+  h2 { font-size: 28pt; margin-bottom: 18px; }
+  h3 { font-size: 20pt; }
+  p, li, td { font-size: 16pt; }
+  .lead, .statement { font-size: 20pt; }
+  .big { font-size: 75pt; }
+  .cols { grid-template-columns: 1fr 1fr; gap: 30px; }
+  pre { background: #f4f6f8; font-size: 13pt; padding: 16px; }
+  .toolbar, .notes, body.show-notes .active .notes { display: none; }
+  .source, .caption { font-size: 10pt; }
+  .refs li { font-size: 16pt; }
+  a { text-decoration: none; }
+}
+</style>
+</head>
+<body>
+
+<main id="deck" aria-label="Reddit Calico 장애 사례 발표">
+
+<!-- 01 -->
+<section class="slide active" aria-labelledby="title-1">
+  <p class="eyebrow">CLOUD CLUB / KUBERNETES STUDY</p>
+  <div class="centered">
+    <h1 id="title-1">Kubernetes 업그레이드가<br>
+      <span class="accent">Calico 라우팅을 끊은 이유</span></h1>
+    <p class="lead">Reddit Pi-Day 장애 분석<br>
+      노드 라벨과 BGP 피어링의 숨은 의존성</p>
+    <p class="muted">2023년 3월 14일 발생 사례</p>
+  </div>
+  <footer class="source">사건 근거: Reddit Engineering 공식 포스트모템 [1]</footer>
+  <aside class="notes">
+    오늘의 질문은 “노드 라벨 변경이 어떻게 Pod 통신 장애로 이어지는가?”입니다.
+    실제 사건, 원리를 설명하는 예시, 운영에 적용할 제안을 구분해서 설명합니다.
+  </aside>
+</section>
+
+<!-- 02 -->
+<section class="slide" aria-labelledby="title-2" hidden>
+  <p class="eyebrow">01 / INCIDENT</p>
+  <h2 id="title-2">업그레이드 직후 발생한 서비스 장애</h2>
+  <div class="content cols">
+    <div>
+      <div class="big">314<small>분</small></div>
+      <p class="muted">공식 회고에 기록된 장애 지속 시간</p>
+    </div>
+    <div class="rule">
+      <h3>Kubernetes 1.23 → 1.24</h3>
+      <p>중요한 레거시 클러스터에서 업그레이드를 진행했습니다.</p>
+      <p>일부 현대화된 API 계층은 유지됐지만,<br>
+        <strong>대부분의 사용자 흐름이 영향</strong>을 받았습니다.</p>
+    </div>
+  </div>
+  <footer class="source">[1] Reddit Engineering, You Broke Reddit: The Pi-Day Outage</footer>
+  <aside class="notes">
+    Reddit의 모든 시스템이 동시에 중단됐다는 의미는 아닙니다.
+    핵심 레거시 서비스에 대한 의존성 때문에 사용자 영향이 크게 확산됐습니다.
+  </aside>
+</section>
+
+<!-- 03 -->
+<section class="slide" aria-labelledby="title-3" hidden>
+  <p class="eyebrow">02 / NETWORK BASICS</p>
+  <h2 id="title-3">Pod 통신에는 목적지 경로가 필요하다</h2>
+  <p class="lead">Node A는 “Pod B가 어느 노드에 있는지” 알아야 합니다.</p>
+  <table>
+    <thead>
+      <tr><th>노드</th><th>Pod</th><th>알아야 하는 경로</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Node A</td><td><code>10.10.1.5</code></td>
+        <td><code>10.10.2.0/24</code>는 Node B 쪽</td>
+      </tr>
+      <tr>
+        <td>Node B</td><td><code>10.10.2.8</code></td>
+        <td><code>10.10.1.0/24</code>는 Node A 쪽</td>
+      </tr>
+    </tbody>
+  </table>
+  <p class="statement">BGP는 노드 사이에서 네트워크 경로 정보를 교환합니다.</p>
+  <p class="caption">IP와 노드 이름은 설명용 예시입니다. Calico의 BGP 기반 구성을 설명합니다.</p>
+  <footer class="source">[3] Calico, Configure BGP peering</footer>
+  <aside class="notes">
+    애플리케이션이 정상이어도 목적지 경로를 잃으면 통신할 수 없습니다.
+    모든 CNI나 모든 Calico 모드가 동일하게 BGP를 사용하는 것은 아닙니다.
+  </aside>
+</section>
+
+<!-- 04 -->
+<section class="slide" aria-labelledby="title-4" hidden>
+  <p class="eyebrow">03 / ROUTE REFLECTOR</p>
+  <h2 id="title-4">대규모 클러스터의 경로 정보 공유</h2>
+  <div class="content cols">
+    <div class="rule">
+      <h3>Full mesh</h3>
+      <p>각 노드가 다른 모든 노드와<br>BGP 연결을 맺습니다.</p>
+      <p class="muted">노드가 많아지면 관리할 연결 수도 급증합니다.</p>
+    </div>
+    <div class="rule">
+      <h3 class="blue">Route Reflector, RR</h3>
+      <p>노드들이 RR과 경로를 교환하고,<br>RR이 경로 정보를 전달합니다.</p>
+      <p class="muted">적은 피어링으로 경로를 공유할 수 있습니다.</p>
+    </div>
+  </div>
+  <p class="statement">RR의 핵심 역할은 <span class="blue">경로 정보 중계</span>입니다.</p>
+  <p class="caption">모든 애플리케이션 패킷이 반드시 RR을 경유한다는 뜻은 아닙니다.</p>
+  <footer class="source">[3] Calico, Configure BGP peering</footer>
+  <aside class="notes">
+    경로 정보를 교환하는 제어 과정과 실제 패킷을 전달하는 과정을 구분합니다.
+    RR 장애는 경로 학습과 유지에 영향을 주고, 결과적으로 통신 장애를 만들 수 있습니다.
+  </aside>
+</section>
+
+<!-- 05 -->
+<section class="slide" aria-labelledby="title-5" hidden>
+  <p class="eyebrow">04 / CONFIGURATION</p>
+  <h2 id="title-5">Calico는 라벨로 BGP 피어를 선택한다</h2>
+  <p class="caption">아래는 원리 설명용 설정입니다. Reddit의 원본 YAML을 그대로 재현한 것이 아닙니다.</p>
+  <pre><code>kind: BGPPeer
+apiVersion: projectcalico.org/v3
+metadata:
+  name: workers-to-route-reflectors
+spec:
+  nodeSelector: "!has(node-role.kubernetes.io/master)"
+  peerSelector: "has(node-role.kubernetes.io/master)"</code></pre>
+  <div class="cols">
+    <p><strong class="blue">nodeSelector</strong><br>설정을 적용할 노드 선택</p>
+    <p><strong class="accent">peerSelector</strong><br>연결 상대 노드 선택</p>
+  </div>
+  <footer class="source">[4] Calico, BGP peer · RR 역할 설정은 별도로 필요합니다.</footer>
+  <aside class="notes">
+    이 예시는 master 라벨이 없는 노드가 master 라벨을 가진 노드와 연결한다는 뜻입니다.
+    라벨은 표시용 메타데이터이면서 실제 연결 구성을 결정하는 입력이기도 합니다.
+  </aside>
+</section>
+
+<!-- 06 -->
+<section class="slide" aria-labelledby="title-6" hidden>
+  <p class="eyebrow">05 / TRIGGER</p>
+  <h2 id="title-6">1.24에서 제거된 기존 역할 라벨</h2>
+  <div class="content">
+    <p class="muted">기존 Control Plane 역할 라벨</p>
+    <pre><code>node-role.kubernetes.io/master</code></pre>
+    <p class="blue">새 역할 라벨</p>
+    <pre><code>node-role.kubernetes.io/control-plane</code></pre>
+    <p>1.24의 <code>kubeadm upgrade apply</code>는<br>
+      기존 Control Plane 노드에서 <strong>master 라벨을 제거</strong>합니다.</p>
+  </div>
+  <footer class="source">[2] Kubernetes v1.24 공식 릴리스 공지</footer>
+  <aside class="notes">
+    이 변경은 kubeadm의 업그레이드 동작에 관한 것입니다.
+    버전 번호가 바뀌는 모든 환경에서 동일한 방식으로 라벨을 제거한다고 일반화하지 않습니다.
+  </aside>
+</section>
+
+<!-- 07 -->
+<section class="slide" aria-labelledby="title-7" hidden>
+  <p class="eyebrow">06 / FAILURE CHAIN</p>
+  <h2 id="title-7">라벨 변경이 라우팅 장애로 이어진 과정</h2>
+  <ol class="flow">
+    <li><span>업그레이드가 기존 <code>master</code> 라벨을 제거</span></li>
+    <li><span>RR 관련 selector는 이전 라벨을 계속 참조</span></li>
+    <li><span>의도한 BGP 피어링 구성이 깨짐</span></li>
+    <li><span>Pod 통신에 필요한 경로가 사라짐</span></li>
+    <li><span class="accent">내부 서비스 통신 실패</span></li>
+  </ol>
+  <footer class="source">[1] Reddit 공식 회고와 [2–4] 공식 문서를 바탕으로 단순화한 인과관계</footer>
+  <aside class="notes">
+    Reddit은 Control Plane 노드를 RR로 사용했습니다.
+    원문은 실제 설정의 의존성과 경로 손실을 확인하지만,
+    모든 노드에서 정확히 같은 순간에 모든 피어가 끊겼다는 세부 타이밍까지 제공하지는 않습니다.
+  </aside>
+</section>
+
+<!-- 08 -->
+<section class="slide" aria-labelledby="title-8" hidden>
+  <p class="eyebrow">07 / SYMPTOMS</p>
+  <h2 id="title-8">처음에는 DNS 장애처럼 보였다</h2>
+  <div class="content cols">
+    <div class="rule">
+      <h3>운영팀이 관찰한 현상</h3>
+      <ul>
+        <li>내부 DNS와 Consul 이름 해석 실패</li>
+        <li>외부 DNS 질의는 동작</li>
+        <li>클러스터 메트릭 접근 상실</li>
+      </ul>
+    </div>
+    <div class="rule">
+      <h3>분석할 때의 질문</h3>
+      <p>DNS 서버가 응답하지 않는가?</p>
+      <p class="accent">DNS 서버까지의 경로가 끊겼는가?</p>
+      <p class="muted">DNS 질의도 네트워크를 사용합니다.</p>
+    </div>
+  </div>
+  <footer class="source">관찰 사실: [1] Reddit 공식 회고 · 분석 질문은 발표용 해설</footer>
+  <aside class="notes">
+    DNS 오류는 근본 원인일 수도 있고, 네트워크 장애의 결과일 수도 있습니다.
+    이름 접근과 IP 접근을 비교해 DNS 아래 계층까지 조사해야 합니다.
+  </aside>
+</section>
+
+<!-- 09 -->
+<section class="slide" aria-labelledby="title-9" hidden>
+  <p class="eyebrow">08 / RECOVERY</p>
+  <h2 id="title-9">실제 복구와 원인 규명은 별개였다</h2>
+  <div class="content cols">
+    <div class="rule">
+      <h3>장애 중 복구</h3>
+      <ul>
+        <li>Calico·Control Plane 재시작으로 해결되지 않음</li>
+        <li>이전 버전과 백업 상태로 복원</li>
+        <li>Control Plane과 노드를 재구성</li>
+        <li>트래픽을 단계적으로 복구</li>
+      </ul>
+    </div>
+    <div class="rule">
+      <h3>복구 후 조사</h3>
+      <p>Calico 로그의 경로 제거를 추적했습니다.</p>
+      <p>RR 설정이 이전 라벨을 참조한다는 사실을 확인했습니다.</p>
+      <p class="accent">원인은 서비스 복구 이후에 밝혀졌습니다.</p>
+    </div>
+  </div>
+  <footer class="source">[1] Reddit Engineering 공식 포스트모템</footer>
+  <aside class="notes">
+    “라벨을 수정해 즉시 복구한 사건”으로 소개하면 부정확합니다.
+    설정 의존성을 모르는 상황에서 이전의 동작 상태로 돌아가 복구했습니다.
+  </aside>
+</section>
+
+<!-- 10 -->
+<section class="slide" aria-labelledby="title-10" hidden>
+  <p class="eyebrow">09 / OPERATIONAL GAPS</p>
+  <h2 id="title-10">복구를 어렵게 만든 운영 조건</h2>
+  <table>
+    <thead><tr><th>조건</th><th>영향</th></tr></thead>
+    <tbody>
+      <tr><td>RR 설정의 코드·기록 부재</td><td>라벨 의존성을 찾기 어려움</td></tr>
+      <tr><td>레거시 클러스터의 특수 구성</td><td>다른 환경의 테스트로 발견하지 못함</td></tr>
+      <tr><td>오래된 복원 문서</td><td>실제 환경에 맞춰 절차 수정 필요</td></tr>
+      <tr><td>인스턴스 확보·인증서 문제</td><td>Control Plane 재구성 지연</td></tr>
+    </tbody>
+  </table>
+  <footer class="source">[1] Reddit Engineering 공식 포스트모템</footer>
+  <aside class="notes">
+    기술적 변경은 작았지만 그 변경이 영향을 주는 의존성을 추적하기 어려웠습니다.
+    복구 절차도 현재 운영 환경에서 실행 가능한지 검증해야 합니다.
+  </aside>
+</section>
+
+<!-- 11 -->
+<section class="slide" aria-labelledby="title-11" hidden>
+  <p class="eyebrow">10 / TROUBLESHOOTING</p>
+  <h2 id="title-11">비슷한 장애의 점검 순서</h2>
+  <p class="caption">사례에서 도출한 제안입니다. Reddit이 실제 실행한 명령 목록은 아닙니다.</p>
+  <div class="cols">
+    <div>
+      <h3>1. 라벨과 피어 설정 비교</h3>
+      <pre><code>kubectl get nodes --show-labels
+
+calicoctl get bgppeer -o yaml
+
+calicoctl get bgpconfiguration -o yaml</code></pre>
+      <p class="muted">selector가 선택하는 노드가<br>기대한 대상과 같은가?</p>
+    </div>
+    <div>
+      <h3>2. 세션과 실제 경로 확인</h3>
+      <pre><code># 조사 대상 노드에서 실행
+sudo calicoctl node status
+
+ip route get &lt;대상-Pod-IP&gt;
+
+ip route show</code></pre>
+      <p class="muted">BGP 세션이 연결됐는가?<br>목적지로 향하는 경로가 있는가?</p>
+    </div>
+  </div>
+  <footer class="source">[3–4] Calico 공식 문서 · 설치 방식, 버전 및 권한에 맞게 사용</footer>
+  <aside class="notes">
+    설정 파일에 피어가 존재하는 것과 실제 BGP 세션이 정상인 것은 다릅니다.
+    정상 노드와 장애 노드의 결과를 비교하면 범위를 좁히는 데 도움이 됩니다.
+  </aside>
+</section>
+
+<!-- 12 -->
+<section class="slide" aria-labelledby="title-12" hidden>
+  <p class="eyebrow">11 / PREVENTION</p>
+  <h2 id="title-12">운영에 적용할 개선안</h2>
+  <ol class="flow">
+    <li><span><strong>네트워크 역할을 명시적으로 관리</strong><br>
+      <span class="muted">RR 전용 라벨과 역할 설정을 함께 코드로 관리</span></span></li>
+    <li><span><strong>업그레이드 전후 연결성 검증</strong><br>
+      <span class="muted">BGP 세션, 노드 간 Pod 통신, DNS 확인</span></span></li>
+    <li><span><strong>운영 토폴로지를 반영한 테스트</strong><br>
+      <span class="muted">RR 유무와 피어링 방식까지 운영 환경과 비교</span></span></li>
+    <li><span><strong>현재 환경에서 복원 연습</strong><br>
+      <span class="muted">백업, 인증서, 노드 재구성 절차 검증</span></span></li>
+  </ol>
+  <footer class="source">발표자의 운영 적용 제안 · 근거: [1], [3], [4]</footer>
+  <aside class="notes">
+    전용 라벨을 도입할 때도 기존 연결을 바로 제거하지 말고,
+    새 피어링과 실제 통신이 정상인지 먼저 확인하는 전환 계획이 필요합니다.
+  </aside>
+</section>
+
+<!-- 13 -->
+<section class="slide" aria-labelledby="title-13" hidden>
+  <p class="eyebrow">12 / DISCUSSION</p>
+  <div class="centered">
+    <h2 id="title-13">우리 클러스터의 숨은 의존성은?</h2>
+    <p class="statement">업그레이드로 바뀌는 값이<br>
+      <span class="accent">어떤 네트워크 설정의 입력인지</span><br>
+      확인할 수 있어야 합니다.</p>
+    <p class="lead">노드 라벨을 참조하는 설정은 어디에 있는가?<br>
+      운영 환경의 특수 구성을 테스트에서도 재현하는가?</p>
+  </div>
+  <aside class="notes">
+    스터디 참여자에게 실제 환경에서 확인할 항목 하나를 골라보게 합니다.
+    Calico를 사용하지 않아도 라벨, OS 설정, IPAM 등 구성요소 사이의 의존성은 존재합니다.
+  </aside>
+</section>
+
+<!-- 14 -->
+<section class="slide" aria-labelledby="title-14" hidden>
+  <p class="eyebrow">REFERENCES</p>
+  <h2 id="title-14">출처 및 추가 읽기</h2>
+  <ol class="refs">
+    <li>
+      <a href="https://www.reddit.com/r/RedditEng/comments/11xx5o0/you_broke_reddit_the_piday_outage/"
+         target="_blank" rel="noopener noreferrer">
+        Reddit Engineering · You Broke Reddit: The Pi-Day Outage
+      </a>
+      <small>사건 경과, 복구 과정, 원인 및 운영 배경</small>
+    </li>
+    <li>
+      <a href="https://groups.google.com/g/kubernetes-announce/c/1XwUN8oURjo"
+         target="_blank" rel="noopener noreferrer">
+        Kubernetes v1.24.0 공식 릴리스 공지
+      </a>
+      <small>kubeadm 업그레이드 시 기존 master 라벨 제거</small>
+    </li>
+    <li>
+      <a href="https://docs.tigera.io/calico/latest/networking/configuring/bgp"
+         target="_blank" rel="noopener noreferrer">
+        Calico · Configure BGP peering
+      </a>
+      <small>Full mesh, Route Reflector 구성 및 상태 확인</small>
+    </li>
+    <li>
+      <a href="https://docs.tigera.io/calico/latest/reference/resources/bgppeer"
+         target="_blank" rel="noopener noreferrer">
+        Calico · BGP peer
+      </a>
+      <small>nodeSelector와 peerSelector의 의미</small>
+    </li>
+  </ol>
+  <p class="caption">2023년 사고 회고와 현재 공식 문서를 구분해 사용했습니다.
+    예시 구성과 점검 명령은 실제 환경의 버전·설치 방식에 맞춰 검토해야 합니다.</p>
+</section>
+
+</main>
+
+<nav class="toolbar" aria-label="발표 제어">
+  <div class="progress" id="progress"></div>
+  <span class="counter" id="counter" aria-live="polite"></span>
+  <div class="controls">
+    <button id="prev" type="button" aria-label="이전 슬라이드">← 이전</button>
+    <button id="next" type="button" aria-label="다음 슬라이드">다음 →</button>
+    <button id="notes" type="button" class="optional" aria-pressed="false">메모 N</button>
+    <button id="fullscreen" type="button" class="optional">전체화면 F</button>
+    <button id="print" type="button" class="optional">인쇄 / PDF</button>
+  </div>
+</nav>
+
+<script>
+(() => {
+  "use strict";
+  const slides = Array.from(document.querySelectorAll(".slide"));
+  const counter = document.getElementById("counter");
+  const progress = document.getElementById("progress");
+  const prev = document.getElementById("prev");
+  const next = document.getElementById("next");
+  const notes = document.getElementById("notes");
+  let index = 0;
+
+  function fromHash() {
+    const match = location.hash.match(/^#slide-(\d+)$/);
+    return match ? Number(match[1]) - 1 : 0;
+  }
+
+  function show(value, updateHash = true) {
+    index = Math.max(0, Math.min(slides.length - 1, value));
+
+    slides.forEach((slide, i) => {
+      const active = i === index;
+      slide.classList.toggle("active", active);
+      slide.hidden = !active;
+    });
+
+    counter.textContent =
+      String(index + 1).padStart(2, "0") + " / " + slides.length;
+    progress.style.width = ((index + 1) / slides.length * 100) + "%";
+    prev.disabled = index === 0;
+    next.disabled = index === slides.length - 1;
+
+    if (updateHash) {
+      try {
+        history.replaceState(null, "", "#slide-" + (index + 1));
+      } catch (_) {
+        // 슬라이드 이동은 주소 변경이 불가능한 환경에서도 동작합니다.
+      }
+    }
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }
+
+  function toggleNotes() {
+    const enabled = document.body.classList.toggle("show-notes");
+    notes.setAttribute("aria-pressed", String(enabled));
+  }
+
+  async function toggleFullscreen() {
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      } else if (document.documentElement.requestFullscreen) {
+        await document.documentElement.requestFullscreen();
+      } else {
+        alert("이 브라우저에서는 브라우저 메뉴의 전체화면 기능을 사용해주세요.");
+      }
+    } catch (_) {
+      alert("전체화면을 사용할 수 없습니다. 브라우저 메뉴에서 실행해주세요.");
+    }
+  }
+
+  prev.addEventListener("click", () => show(index - 1));
+  next.addEventListener("click", () => show(index + 1));
+  notes.addEventListener("click", toggleNotes);
+  document.getElementById("fullscreen")
+    .addEventListener("click", toggleFullscreen);
+  document.getElementById("print")
+    .addEventListener("click", () => window.print());
+
+  document.addEventListener("keydown", event => {
+    if (event.altKey || event.ctrlKey || event.metaKey) return;
+    if (event.target.closest(
+      "button, a, input, textarea, select, [contenteditable='true']"
+    )) return;
+
+    switch (event.key) {
+      case "ArrowRight":
+      case "PageDown":
+      case " ":
+        event.preventDefault();
+        show(index + (event.shiftKey ? -1 : 1));
+        break;
+      case "ArrowLeft":
+      case "PageUp":
+        event.preventDefault();
+        show(index - 1);
+        break;
+      case "Home":
+        event.preventDefault();
+        show(0);
+        break;
+      case "End":
+        event.preventDefault();
+        show(slides.length - 1);
+        break;
+      case "n":
+      case "N":
+        toggleNotes();
+        break;
+      case "f":
+      case "F":
+        toggleFullscreen();
+        break;
+    }
+  });
+
+  window.addEventListener("hashchange", () => show(fromHash(), false));
+
+  // 인쇄 시 hidden 속성을 제거해 모든 슬라이드를 출력합니다.
+  window.addEventListener("beforeprint", () => {
+    slides.forEach(slide => { slide.hidden = false; });
+  });
+  window.addEventListener("afterprint", () => show(index, false));
+
+  show(fromHash(), false);
+})();
+</script>
+</body>
+</html>
